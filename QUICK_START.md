@@ -1,105 +1,48 @@
-# 🚀 Guide de démarrage rapide
+---
+title: Documentation Projet EpiTrello
+language_tabs:
+  - http: Terminal
+language_clients:
+  - http: ""
+toc_footers: []
+includes: []
+search: false
+highlight_theme: darkula
+headingLevel: 2
+---
 
-## 1. Démarrer Docker
+<h1 id="documentation-epitrello">Documentation du Projet EpiTrello</h1>
 
-```bash
-sudo docker-compose up -d
-```
+<h2 id="guide">Guide de Démarrage Rapide</h2>
 
-## 2. Configurer l'environnement API
+<p>
+Ce document est le guide de démarrage rapide du projet <strong>EpiTrello</strong>.  
+Il fournit les étapes essentielles pour initialiser votre environnement de travail, installer les dépendances et lancer l'application avec Docker Compose.
+</p>
 
-Créez `apps/api/.env` :
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/epi_trello
-JWT_ACCESS_SECRET=mon-secret-super-securise-changez-ca-en-production
-PORT=3001
-```
+---
 
-## 3. Installer les dépendances et exécuter les migrations
+<h1 id="prerequis">Prérequis</h1>
 
-```bash
-# API
-cd apps/api
-npm install  # ou pnpm install
-npx prisma migrate dev
-npx prisma generate
+<p>Pour installer et lancer l'application, vous devez avoir les outils suivants :</p>
 
-# Frontend
-cd ../web
-npm install  # ou pnpm install
-```
+<ul>
+  <li><strong>Node.js 18+</strong> — Runtime JavaScript</li>
+  <li><strong>npm / yarn / pnpm</strong> — Gestionnaire de paquets</li>
+  <li><strong>Docker & Docker Compose</strong> — Conteneurs backend / frontend / base de données</li>
+  <li><strong>Git</strong> — Pour cloner le dépôt</li>
+</ul>
 
-## 4. Démarrer les services
+---
 
-**Terminal 1 - API :**
-```bash
-cd apps/api
-npm run start:dev  # ou pnpm start:dev
-```
+<h1 id="installation">Installation du Projet</h1>
 
-**Terminal 2 - Frontend :**
-```bash
-cd apps/web
-npm run dev  # ou pnpm dev
-```
+<p>Suivez les étapes ci-dessous pour initialiser l'environnement de développement.</p>
 
-## 5. Tester l'application
+<h2 id="clonage">Clonage du dépôt</h2>
 
-### Liens de test :
+<p>Dans votre terminal :</p>
 
-- **Frontend** : http://localhost:3000
-- **Page de login** : http://localhost:3000/login
-- **API** : http://localhost:3001
-- **Mailhog** : http://localhost:8025
-
-### Étapes de test :
-
-1. **Ouvrir http://localhost:3000/login**
-2. **Créer un compte** :
-   - Email : `test@example.com`
-   - Mot de passe : `test123` (n'importe quoi, pas encore vérifié)
-   - Nom : `Test User` (optionnel)
-3. **Cliquer sur "S'inscrire"**
-4. **Vous serez automatiquement connecté et redirigé vers `/workspaces`**
-5. **Créer un workspace**, puis créer des boards, etc.
-
-### Tester avec un autre compte :
-
-1. Aller sur http://localhost:3000/login
-2. Se connecter avec un autre email (ex: `user2@example.com`)
-3. Créer un workspace
-4. Inviter le premier utilisateur (`test@example.com`) comme membre
-
-## Commandes utiles
-
-```bash
-# Voir les logs Docker
-docker-compose logs -f
-
-# Arrêter Docker
-docker-compose down
-
-# Redémarrer tout
-docker-compose restart
-```
-
-## Troubleshooting
-
-**Erreur "Cannot connect to database"** :
-- Vérifiez que Docker est démarré : `docker-compose ps`
-- Vérifiez `DATABASE_URL` dans `apps/api/.env`
-
-**Erreur "Prisma Client not generated"** :
-```bash
-cd apps/api
-npx prisma generate
-```
-
-**Erreur CORS** :
-- L'API est configurée pour accepter les requêtes depuis `http://localhost:3000`
-- Si vous changez le port, modifiez `apps/api/src/main.ts`
-
-**Token expiré** :
-- Les tokens JWT expirent après 7 jours
-- Reconnectez-vous via `/login` si nécessaire
-
+```http
+git clone <URL_DU_DEPOT>
+cd EpiTrello2025
