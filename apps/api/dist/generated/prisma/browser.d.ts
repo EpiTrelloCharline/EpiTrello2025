@@ -1,0 +1,10 @@
+import * as Prisma from './internal/prismaNamespaceBrowser';
+export { Prisma };
+export * as $Enums from './enums';
+export * from './enums';
+export type User = Prisma.UserModel;
+export type Workspace = Prisma.WorkspaceModel;
+export type WorkspaceMember = Prisma.WorkspaceMemberModel;
+export type Board = Prisma.BoardModel;
+export type BoardMember = Prisma.BoardMemberModel;
+export type List = Prisma.ListModel;
