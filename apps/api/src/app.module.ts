@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { BoardsModule } from './boards/boards.module';
 import { ListsModule } from './lists/lists.module';
+import { CardsModule } from './cards/cards.module';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { ListsModule } from './lists/lists.module';
     WorkspacesModule,
     BoardsModule,
     ListsModule,
+    CardsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
 
