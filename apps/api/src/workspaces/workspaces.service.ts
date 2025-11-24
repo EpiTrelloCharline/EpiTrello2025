@@ -7,7 +7,7 @@ import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 
 @Injectable()
 export class WorkspacesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async listForUser(userId: string) {
     return this.prisma.workspace.findMany({
@@ -26,7 +26,10 @@ export class WorkspacesService {
         data: { workspaceId: ws.id, userId, role: 'OWNER' },
       });
 
-      return ws;
+      return tx.workspace.findUnique({
+        where: { id: ws.id },
+        include: { members: { include: { user: true } } },
+      });
     });
   }
 
@@ -41,11 +44,11 @@ export class WorkspacesService {
     });
   }
 
-  async inviteByEmail(userId: string, workspaceId: string, email: string, role: 'ADMIN'|'MEMBER'|'OBSERVER') {
+  async inviteByEmail(userId: string, workspaceId: string, email: string, role: 'ADMIN' | 'MEMBER' | 'OBSERVER') {
     // vérifie droits : seul OWNER/ADMIN peut inviter
     const me = await this.prisma.workspaceMember.findFirst({ where: { workspaceId, userId } });
 
-    if (!me || !['OWNER','ADMIN'].includes(me.role)) throw new ForbiddenException('No permission');
+    if (!me || !['OWNER', 'ADMIN'].includes(me.role)) throw new ForbiddenException('No permission');
 
     const user = await this.prisma.user.findUnique({ where: { email } });
 
