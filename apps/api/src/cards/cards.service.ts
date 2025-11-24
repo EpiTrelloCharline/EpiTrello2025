@@ -23,6 +23,15 @@ export class CardsService {
         return list;
     }
 
+    async list(userId: string, listId: string) {
+        await this.assertBoardMember(userId, listId);
+
+        return this.prisma.card.findMany({
+            where: { listId },
+            orderBy: { position: 'asc' },
+        });
+    }
+
     async create(userId: string, dto: CreateCardDto) {
         await this.assertBoardMember(userId, dto.listId);
 
