@@ -39,3 +39,18 @@ export async function moveCard(cardId: string, listId: string, newPosition: numb
   });
   return res.json();
 }
+
+export async function deleteCard(cardId: string) {
+  const res = await api(`/cards/${cardId}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
+
+export async function updateCard(cardId: string, data: { title?: string; description?: string; isArchived?: boolean; listId?: string; position?: string }) {
+  const res = await api(`/cards/${cardId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
