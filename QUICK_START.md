@@ -432,4 +432,3 @@ Pour contribuer au projet:
 - Le système de positionnement décimal peut nécessiter un rééquilibrage après de nombreuses opérations
 
 ---
-*
