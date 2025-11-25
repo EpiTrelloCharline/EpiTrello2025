@@ -18,3 +18,24 @@ export function api(path: string, init?: RequestInit) {
   });
 }
 
+
+export async function getCardsByList(listId: string) {
+  const res = await api(`/cards?listId=${listId}`);
+  return res.json();
+}
+
+export async function createCard(listId: string, title: string) {
+  const res = await api('/cards', {
+    method: 'POST',
+    body: JSON.stringify({ listId, title }),
+  });
+  return res.json();
+}
+
+export async function moveCard(cardId: string, listId: string, newPosition: number) {
+  const res = await api('/cards/move', {
+    method: 'POST',
+    body: JSON.stringify({ cardId, listId, newPosition }),
+  });
+  return res.json();
+}
