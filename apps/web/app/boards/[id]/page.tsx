@@ -198,6 +198,55 @@ export default function BoardPage() {
     }
   }
 
+  // Handle card deletion
+  async function handleDeleteCard(cardId: string) {
+    const cardLocation = findCardLocation(cardId, cardsByList);
+    if (!cardLocation) return;
+
+    const { listId } = cardLocation;
+
+    // Optimistic update
+    setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
+    setCardsByList(prev => ({
+      ...prev,
+      [listId]: prev[listId].filter(c => c.id !== cardId)
+    }));
+
+    try {
+      await api(`/cards/${cardId}`, { method: 'DELETE' });
+    } catch (error) {
+      console.error('Failed to delete card:', error);
+      setCardsByList(previousCardsByList);
+      alert('Failed to delete card. Changes have been reverted.');
+    }
+  }
+
+  // Handle card update
+  async function handleUpdateCard(cardId: string, data: { title?: string }) {
+    const cardLocation = findCardLocation(cardId, cardsByList);
+    if (!cardLocation) return;
+
+    const { listId } = cardLocation;
+
+    // Optimistic update
+    setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
+    setCardsByList(prev => ({
+      ...prev,
+      [listId]: prev[listId].map(c => c.id === cardId ? { ...c, ...data } : c)
+    }));
+
+    try {
+      await api(`/cards/${cardId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data)
+      });
+    } catch (error) {
+      console.error('Failed to update card:', error);
+      setCardsByList(previousCardsByList);
+      alert('Failed to update card. Changes have been reverted.');
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col bg-[#0079bf]">
       {/* Header du board */}
@@ -210,7 +259,15 @@ export default function BoardPage() {
           <div className="h-full flex items-start gap-4">
             <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
               {lists.map(l => (
-                <Column key={l.id} id={l.id} title={l.title} cards={cardsByList[l.id] ?? []} setCardsByList={setCardsByList} />
+                <Column
+                  key={l.id}
+                  id={l.id}
+                  title={l.title}
+                  cards={cardsByList[l.id] ?? []}
+                  setCardsByList={setCardsByList}
+                  onDeleteCard={handleDeleteCard}
+                  onUpdateCard={handleUpdateCard}
+                />
               ))}
             </SortableContext>
 
@@ -251,7 +308,14 @@ export default function BoardPage() {
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList }: { id: string; title: string; cards: Card[]; setCardsByList: React.Dispatch<React.SetStateAction<Record<string, Card[]>>> }) {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }: {
+  id: string;
+  title: string;
+  cards: Card[];
+  setCardsByList: React.Dispatch<React.SetStateAction<Record<string, Card[]>>>;
+  onDeleteCard: (cardId: string) => void;
+  onUpdateCard: (cardId: string, data: { title?: string }) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const { setNodeRef: setDroppableRef } = useDroppable({ id: `list-${id}` });
   const style = { transform: CSS.Translate.toString(transform), transition };
@@ -319,7 +383,12 @@ function Column({ id, title, cards, setCardsByList }: { id: string; title: strin
       <div ref={setDroppableRef} className="space-y-2 overflow-y-auto flex-1 min-h-[100px] px-1 custom-scrollbar">
         <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
           {Array.isArray(cards) && cards.map((card) => (
-            <DraggableCard key={card.id} card={card} />
+            <DraggableCard
+              key={card.id}
+              card={card}
+              onDelete={onDeleteCard}
+              onUpdate={onUpdateCard}
+            />
           ))}
         </SortableContext>
       </div>
