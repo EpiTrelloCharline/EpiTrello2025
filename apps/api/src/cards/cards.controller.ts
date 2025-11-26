@@ -6,11 +6,16 @@ import { CardsService } from './cards.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { LabelsService } from '../labels/labels.service';
+import { AssignLabelDto } from '../labels/dto/assign-label.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('cards')
 export class CardsController {
-    constructor(private readonly cardsService: CardsService) { }
+    constructor(
+        private readonly cardsService: CardsService,
+        private readonly labelsService: LabelsService,
+    ) { }
 
     @UseGuards(BoardReadGuard)
     @Get()
@@ -40,5 +45,33 @@ export class CardsController {
     @Delete(':id')
     archive(@Param('id') id: string, @Request() req: any) {
         return this.cardsService.archive(req.user.id, id);
+    }
+
+    // ==================== LABEL ASSIGNMENT ROUTES ====================
+
+    /** 
+     * POST /cards/:id/labels 
+     * Assign a label to a card 
+     */
+    @Post(':id/labels')
+    assignLabel(
+        @Param('id') cardId: string,
+        @Body() dto: AssignLabelDto,
+        @Request() req: any,
+    ) {
+        return this.labelsService.assignLabelToCard(req.user.id, cardId, dto.labelId);
+    }
+
+    /** 
+     * DELETE /cards/:id/labels/:labelId 
+     * Remove a label from a card 
+     */
+    @Delete(':id/labels/:labelId')
+    removeLabel(
+        @Param('id') cardId: string,
+        @Param('labelId') labelId: string,
+        @Request() req: any,
+    ) {
+        return this.labelsService.removeLabelFromCard(req.user.id, cardId, labelId);
     }
 }
