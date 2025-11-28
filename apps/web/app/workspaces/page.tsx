@@ -99,8 +99,8 @@ export default function WorkspacesPage() {
   if (loading) {
     return (
       <div className="container mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-4">Workspaces</h1>
-        <p>Loading...</p>
+        <h1 className="text-2xl font-bold mb-4">Espaces de travail</h1>
+        <p>Chargement...</p>
       </div>
     );
   }
@@ -108,12 +108,12 @@ export default function WorkspacesPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Workspaces</h1>
+        <h1 className="text-2xl font-bold">Espaces de travail</h1>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
         >
-          {showCreateForm ? 'Cancel' : 'Create Workspace'}
+          {showCreateForm ? 'Annuler' : 'Créer un espace de travail'}
         </button>
       </div>
 
@@ -126,7 +126,7 @@ export default function WorkspacesPage() {
       {showCreateForm && (
         <form onSubmit={handleCreateWorkspace} className="bg-gray-50 p-4 rounded mb-6">
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Name *</label>
+            <label className="block text-sm font-medium mb-2">Nom *</label>
             <input
               type="text"
               value={formData.name}
@@ -148,13 +148,13 @@ export default function WorkspacesPage() {
             type="submit"
             className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
           >
-            Create
+            Créer
           </button>
         </form>
       )}
 
       {workspaces.length === 0 ? (
-        <p className="text-gray-500">No workspaces found. Create your first workspace!</p>
+        <p className="text-gray-500">Aucun espace de travail trouvé. Créez votre premier espace de travail !</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {workspaces.map((workspace) => (
@@ -168,7 +168,7 @@ export default function WorkspacesPage() {
               )}
               <div className="mt-4">
                 <p className="text-sm text-gray-500">
-                  {workspace.members.length} member{workspace.members.length !== 1 ? 's' : ''}
+                  {workspace.members.length} membre{workspace.members.length !== 1 ? 's' : ''}
                 </p>
                 <div className="mt-2">
                   {workspace.members.slice(0, 3).map((member) => (
@@ -181,7 +181,7 @@ export default function WorkspacesPage() {
                   ))}
                   {workspace.members.length > 3 && (
                     <span className="text-xs text-gray-500">
-                      +{workspace.members.length - 3} more
+                      +{workspace.members.length - 3} autres
                     </span>
                   )}
                 </div>

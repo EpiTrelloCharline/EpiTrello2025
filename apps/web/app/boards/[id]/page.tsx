@@ -7,13 +7,17 @@ import {
   DragEndEvent,
   DragStartEvent,
   DragOverEvent,
-  useDroppable
+  useDroppable,
+  useSensors,
+  useSensor,
+  PointerSensor
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { api, getCardsByList, createCard, moveCard } from '@/lib/api';
+import { api, getCardsByList, createCard, moveCard, updateCard } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
+import { CardDetailModal } from './CardDetailModal';
 
 type List = { id: string; title: string; position: number };
 type Card = { id: string; listId: string; title: string; position: string };
@@ -25,19 +29,51 @@ export default function BoardPage() {
   const [title, setTitle] = useState('');
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [previousCardsByList, setPreviousCardsByList] = useState<Record<string, Card[]>>({});
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   useEffect(() => {
     if (!token || !params?.id) return;
 
-    api(`/lists?boardId=${params.id}`).then(r => r.json()).then(setLists);
+    api(`/lists?boardId=${params.id}`)
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to fetch lists');
+        return r.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setLists(data);
+        } else {
+          setLists([]);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        setLists([]);
+      });
   }, [token, params?.id]);
 
   useEffect(() => {
     async function loadCards() {
       const results = await Promise.all(
         lists.map(async (list) => {
-          const cards = await getCardsByList(list.id);
+          let cards: Card[] = [];
+          try {
+            const result = await getCardsByList(list.id);
+            if (Array.isArray(result)) {
+              cards = result;
+            }
+          } catch (e) {
+            console.error(`Failed to load cards for list ${list.id}`, e);
+          }
           return [list.id, cards] as const;
         })
       );
@@ -174,7 +210,7 @@ export default function BoardPage() {
       } catch (error) {
         console.error('Failed to move card:', error);
         setCardsByList(previousCardsByList);
-        alert('Failed to move card. Changes have been reverted.');
+        alert('Échec du déplacement de la carte. Les modifications ont été annulées.');
       }
     } else {
       // LIST DRAGGING
@@ -217,7 +253,7 @@ export default function BoardPage() {
     } catch (error) {
       console.error('Failed to delete card:', error);
       setCardsByList(previousCardsByList);
-      alert('Failed to delete card. Changes have been reverted.');
+      alert('Échec de la suppression de la carte. Les modifications ont été annulées.');
     }
   }
 
@@ -243,7 +279,29 @@ export default function BoardPage() {
     } catch (error) {
       console.error('Failed to update card:', error);
       setCardsByList(previousCardsByList);
-      alert('Failed to update card. Changes have been reverted.');
+      alert('Échec de la mise à jour de la carte. Les modifications ont été annulées.');
+    }
+  }
+
+  async function handleSaveCardDetails(data: { title: string; description: string }) {
+    if (!selectedCard) return;
+
+    // Optimistic update
+    setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
+    setCardsByList(prev => ({
+      ...prev,
+      [selectedCard.listId]: prev[selectedCard.listId].map(c =>
+        c.id === selectedCard.id ? { ...c, ...data } : c
+      )
+    }));
+
+    try {
+      await updateCard(selectedCard.id, data);
+      setSelectedCard(null);
+    } catch (error) {
+      console.error('Failed to update card details:', error);
+      setCardsByList(previousCardsByList);
+      alert('Échec de la mise à jour des détails de la carte. Les modifications ont été annulées.');
     }
   }
 
@@ -251,11 +309,15 @@ export default function BoardPage() {
     <div className="h-screen flex flex-col bg-[#0079bf]">
       {/* Header du board */}
       <div className="h-12 bg-black/20 backdrop-blur-sm flex items-center px-4 text-white font-bold">
-        Trello Clone
+        Epi Trello
       </div>
 
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
-        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
           <div className="h-full flex items-start gap-4">
             <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
               {lists.map(l => (
@@ -267,6 +329,7 @@ export default function BoardPage() {
                   setCardsByList={setCardsByList}
                   onDeleteCard={handleDeleteCard}
                   onUpdateCard={handleUpdateCard}
+                  onCardClick={setSelectedCard}
                 />
               ))}
             </SortableContext>
@@ -278,7 +341,7 @@ export default function BoardPage() {
                   <input
                     autoFocus
                     className="w-full px-2 py-1 text-sm border-2 border-blue-600 rounded mb-2 focus:outline-none"
-                    placeholder="Enter list title..."
+                    placeholder="Saisissez le titre de la liste..."
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     onKeyDown={e => {
@@ -287,7 +350,7 @@ export default function BoardPage() {
                     }}
                   />
                   <div className="flex items-center gap-2">
-                    <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={createList}>Add list</button>
+                    <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={createList}>Ajouter une liste</button>
                     <button className="text-gray-600 hover:text-gray-800" onClick={() => setTitle('')}>✕</button>
                   </div>
                 </div>
@@ -296,25 +359,34 @@ export default function BoardPage() {
                   className="w-full text-left text-white font-medium flex items-center gap-2 px-2 py-1"
                   onClick={() => setTitle(' ')} // Hack to show input
                 >
-                  <span>+</span> Add another list
+                  <span>+</span> Ajouter une autre liste
                 </button>
               )}
             </div>
           </div>
         </DndContext>
       </div>
+
+      {selectedCard && (
+        <CardDetailModal
+          card={selectedCard}
+          onClose={() => setSelectedCard(null)}
+          onSave={handleSaveCardDetails}
+        />
+      )}
     </div>
   );
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }: {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick }: {
   id: string;
   title: string;
   cards: Card[];
   setCardsByList: React.Dispatch<React.SetStateAction<Record<string, Card[]>>>;
   onDeleteCard: (cardId: string) => void;
   onUpdateCard: (cardId: string, data: { title?: string }) => void;
+  onCardClick: (card: Card) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const { setNodeRef: setDroppableRef } = useDroppable({ id: `list-${id}` });
@@ -368,7 +440,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
           [id]: currentCards.filter((c) => c.id !== tempId),
         };
       });
-      alert('Failed to create card');
+      alert('Échec de la création de la carte');
     }
   }
 
@@ -388,6 +460,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
               card={card}
               onDelete={onDeleteCard}
               onUpdate={onUpdateCard}
+              onClick={() => onCardClick(card)}
             />
           ))}
         </SortableContext>
@@ -399,7 +472,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
             <textarea
               autoFocus
               className="w-full bg-white border-none shadow-sm rounded-lg p-2 text-sm mb-2 resize-none focus:ring-2 focus:ring-blue-600"
-              placeholder="Enter a title for this card..."
+              placeholder="Saisissez un titre pour cette carte..."
               rows={3}
               value={newCardTitle}
               onChange={(e) => setNewCardTitle(e.target.value)}
@@ -412,7 +485,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
               }}
             />
             <div className="flex items-center gap-2">
-              <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={handleAddCard}>Add card</button>
+              <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={handleAddCard}>Ajouter une carte</button>
               <button className="text-gray-600 hover:text-gray-800" onClick={() => setIsAdding(false)}>✕</button>
             </div>
           </div>
@@ -421,7 +494,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
             className="w-full text-left text-[#5e6c84] hover:bg-[#091e4214] hover:text-[#172b4d] p-2 rounded text-sm flex items-center gap-2 transition-colors"
             onClick={() => setIsAdding(true)}
           >
-            <span>+</span> Add a card
+            <span>+</span> Ajouter une carte
           </button>
         )}
       </div>
