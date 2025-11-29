@@ -15,9 +15,10 @@ type DraggableCardProps = {
     onDelete: (cardId: string) => void;
     onUpdate: (cardId: string, data: { title?: string }) => void;
     onClick?: () => void;
+    isDragDisabled?: boolean;
 };
 
-export function DraggableCard({ card, onDelete, onUpdate, onClick }: DraggableCardProps) {
+export function DraggableCard({ card, onDelete, onUpdate, onClick, isDragDisabled }: DraggableCardProps) {
     const {
         attributes,
         listeners,
@@ -25,7 +26,7 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick }: DraggableCa
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: card.id });
+    } = useSortable({ id: card.id, disabled: isDragDisabled });
 
     const [isEditing, setIsEditing] = useState(false);
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
