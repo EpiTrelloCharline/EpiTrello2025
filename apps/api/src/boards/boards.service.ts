@@ -6,7 +6,7 @@ import { CreateBoardDto } from './dto/create-board.dto';
 
 @Injectable()
 export class BoardsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async listInWorkspace(userId: string, workspaceId: string) {
     const isMember = await this.prisma.workspaceMember.findFirst({ where: { workspaceId, userId } });
@@ -35,7 +35,13 @@ export class BoardsService {
 
     if (!member) throw new ForbiddenException('Not a board member');
 
-    const board = await this.prisma.board.findUnique({ where: { id: boardId } });
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        members: { include: { user: true } },
+        labels: true,
+      },
+    });
 
     if (!board) throw new NotFoundException('Board not found');
 

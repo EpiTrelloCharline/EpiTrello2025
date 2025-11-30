@@ -57,6 +57,10 @@ export class CardsService {
                 isArchived: false,
             },
             orderBy: { position: 'asc' },
+            include: {
+                labels: true,
+                members: true,
+            },
         });
     }
 
@@ -76,6 +80,10 @@ export class CardsService {
                 description: dto.description,
                 listId: dto.listId,
                 position: position,
+            },
+            include: {
+                labels: true,
+                members: true,
             },
         });
     }
@@ -116,6 +124,10 @@ export class CardsService {
                 listId: targetListId,
                 position: newPosition,
             },
+            include: {
+                labels: true,
+                members: true,
+            },
         });
     }
 
@@ -136,6 +148,10 @@ export class CardsService {
                 position: dto.position ? Number(dto.position) : undefined,
                 isArchived: dto.isArchived,
             },
+            include: {
+                labels: true,
+                members: true,
+            },
         });
     }
 
@@ -146,6 +162,10 @@ export class CardsService {
             where: { id: cardId },
             data: {
                 isArchived: true,
+            },
+            include: {
+                labels: true,
+                members: true,
             },
         });
     }
