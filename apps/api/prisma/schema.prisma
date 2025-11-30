@@ -21,6 +21,7 @@ model User {
   workspaces    WorkspaceMember[]
   createdWorkspaces Workspace[]
   boardMembers  BoardMember[]
+  cards         Card[]
 }
 
 enum WorkspaceRole {
@@ -75,6 +76,7 @@ model Board {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   members     BoardMember[]
   lists       List[]
+  labels      Label[]
 }
 
 model BoardMember {
@@ -110,5 +112,17 @@ model Card {
   updatedAt   DateTime @updatedAt
 
   list        List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  
+  labels      Label[]
+  members     User[]
+}
+
+model Label {
+  id      String @id @default(cuid())
+  boardId String
+  name    String
+  color   String?
+  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards   Card[]
 }
 
