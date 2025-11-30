@@ -13,6 +13,7 @@ const auth_module_1 = require("./auth/auth.module");
 const workspaces_module_1 = require("./workspaces/workspaces.module");
 const boards_module_1 = require("./boards/boards.module");
 const lists_module_1 = require("./lists/lists.module");
+const cards_module_1 = require("./cards/cards.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -27,6 +28,7 @@ exports.AppModule = AppModule = __decorate([
             workspaces_module_1.WorkspacesModule,
             boards_module_1.BoardsModule,
             lists_module_1.ListsModule,
+            cards_module_1.CardsModule,
         ],
     })
 ], AppModule);

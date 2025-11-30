@@ -4,7 +4,25 @@ import { MoveListDto } from './dto/move-list.dto';
 export declare class ListsController {
     private svc;
     constructor(svc: ListsService);
-    list(boardId: string, req: any): Promise<runtime.Types.Public.PrismaPromise<T>>;
-    create(dto: CreateListDto, req: any): Promise<runtime.Types.Result.GetResult<import("../generated/prisma/models").$ListPayload<ExtArgs>, T, "create", GlobalOmitOptions>>;
-    move(dto: MoveListDto, req: any): Promise<runtime.Types.Result.GetResult<import("../generated/prisma/models").$ListPayload<ExtArgs>, T, "update", GlobalOmitOptions>>;
+    list(boardId: string, req: any): Promise<{
+        id: string;
+        boardId: string;
+        title: string;
+        position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
+    }[]>;
+    create(dto: CreateListDto, req: any): Promise<{
+        id: string;
+        boardId: string;
+        title: string;
+        position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
+    }>;
+    move(dto: MoveListDto, req: any): Promise<{
+        id: string;
+        boardId: string;
+        title: string;
+        position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
+    }>;
 }
