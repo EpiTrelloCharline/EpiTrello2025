@@ -15,12 +15,14 @@ import {
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { api, getCardsByList, createCard, moveCard, updateCard } from '@/lib/api';
+import { api, getCardsByList, createCard, moveCard, updateCard, getLabelsByBoard } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
+import { LabelsManagementModal } from './LabelsManagementModal';
 
 type List = { id: string; title: string; position: number };
 type Card = { id: string; listId: string; title: string; position: string };
+type Label = { id: string; boardId: string; name: string; color: string };
 
 export default function BoardPage() {
   const params = useParams<{ id: string }>();
@@ -30,6 +32,9 @@ export default function BoardPage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [previousCardsByList, setPreviousCardsByList] = useState<Record<string, Card[]>>({});
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [labels, setLabels] = useState<Label[]>([]);
+  const [showLabelsModal, setShowLabelsModal] = useState(false);
+  const [labelsRefreshTrigger, setLabelsRefreshTrigger] = useState(0);
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const sensors = useSensors(
@@ -59,10 +64,25 @@ export default function BoardPage() {
         console.error(err);
         setLists([]);
       });
+
+    // Load board labels
+    loadLabels();
   }, [token, params?.id]);
+
+  const loadLabels = async () => {
+    if (!params?.id) return;
+    try {
+      const boardLabels = await getLabelsByBoard(params.id);
+      setLabels(boardLabels);
+    } catch (error) {
+      console.error('Failed to load labels:', error);
+    }
+  };
 
   useEffect(() => {
     async function loadCards() {
+      if (lists.length === 0) return;
+      
       const results = await Promise.all(
         lists.map(async (list) => {
           let cards: Card[] = [];
@@ -286,11 +306,16 @@ export default function BoardPage() {
   async function handleSaveCardDetails(data: { title: string; description: string }) {
     if (!selectedCard) return;
 
+    const cardLocation = findCardLocation(selectedCard.id, cardsByList);
+    if (!cardLocation) return;
+
+    const { listId } = cardLocation;
+
     // Optimistic update
     setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
     setCardsByList(prev => ({
       ...prev,
-      [selectedCard.listId]: prev[selectedCard.listId].map(c =>
+      [listId]: (prev[listId] || []).map(c =>
         c.id === selectedCard.id ? { ...c, ...data } : c
       )
     }));
@@ -308,8 +333,14 @@ export default function BoardPage() {
   return (
     <div className="h-screen flex flex-col bg-[#0079bf]">
       {/* Header du board */}
-      <div className="h-12 bg-black/20 backdrop-blur-sm flex items-center px-4 text-white font-bold">
-        Epi Trello
+      <div className="h-12 bg-black/20 backdrop-blur-sm flex items-center justify-between px-4 text-white font-bold">
+        <span>Epi Trello</span>
+        <button
+          className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded text-sm transition-colors"
+          onClick={() => setShowLabelsModal(true)}
+        >
+          ⚡ Labels
+        </button>
       </div>
 
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
@@ -330,6 +361,7 @@ export default function BoardPage() {
                   onDeleteCard={handleDeleteCard}
                   onUpdateCard={handleUpdateCard}
                   onCardClick={setSelectedCard}
+                  labelsRefreshTrigger={labelsRefreshTrigger}
                 />
               ))}
             </SortableContext>
@@ -367,11 +399,24 @@ export default function BoardPage() {
         </DndContext>
       </div>
 
-      {selectedCard && (
+      {selectedCard && params?.id && (
         <CardDetailModal
           card={selectedCard}
+          boardId={params.id}
+          availableLabels={labels}
           onClose={() => setSelectedCard(null)}
           onSave={handleSaveCardDetails}
+          onLabelsChange={() => setLabelsRefreshTrigger(Date.now())}
+        />
+      )}
+
+      {showLabelsModal && params?.id && (
+        <LabelsManagementModal
+          boardId={params.id}
+          onClose={() => {
+            setShowLabelsModal(false);
+            loadLabels(); // Refresh labels when modal closes
+          }}
         />
       )}
     </div>
@@ -379,7 +424,7 @@ export default function BoardPage() {
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick }: {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, labelsRefreshTrigger }: {
   id: string;
   title: string;
   cards: Card[];
@@ -387,6 +432,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   onDeleteCard: (cardId: string) => void;
   onUpdateCard: (cardId: string, data: { title?: string }) => void;
   onCardClick: (card: Card) => void;
+  labelsRefreshTrigger?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const { setNodeRef: setDroppableRef } = useDroppable({ id: `list-${id}` });
@@ -420,15 +466,18 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
 
     try {
       const created = await createCard(id, title);
+      console.log('Card created from API:', created);
 
       // Remplacer la temp par la vraie carte
       setCardsByList((prev) => {
         const currentCards = Array.isArray(prev[id]) ? prev[id] : [];
+        const updatedCards = currentCards.map((c) =>
+          c.id === tempId ? { ...created, title: created.title || title } : c
+        );
+        console.log('Updated cards:', updatedCards);
         return {
           ...prev,
-          [id]: currentCards.map((c) =>
-            c.id === tempId ? created : c
-          ),
+          [id]: updatedCards,
         };
       });
     } catch (e) {
@@ -461,6 +510,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
               onDelete={onDeleteCard}
               onUpdate={onUpdateCard}
               onClick={() => onCardClick(card)}
+              refreshTrigger={labelsRefreshTrigger}
             />
           ))}
         </SortableContext>

@@ -30,7 +30,10 @@ let WorkspacesService = class WorkspacesService {
             await tx.workspaceMember.create({
                 data: { workspaceId: ws.id, userId, role: 'OWNER' },
             });
-            return ws;
+            return tx.workspace.findUnique({
+                where: { id: ws.id },
+                include: { members: { include: { user: true } } },
+            });
         });
     }
     async getOne(userId, workspaceId) {

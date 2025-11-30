@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { getCardLabels, assignLabel, unassignLabel } from '@/lib/api';
 
 type Card = {
     id: string;
@@ -9,15 +10,29 @@ type Card = {
     position: string;
 };
 
-type CardDetailModalProps = {
-    card: Card;
-    onClose: () => void;
-    onSave: (data: { title: string; description: string }) => Promise<void> | void;
+type Label = { 
+    id: string; 
+    boardId: string;
+    name: string; 
+    color: string;
 };
 
-export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps) {
+type CardDetailModalProps = {
+    card: Card;
+    boardId: string;
+    availableLabels: Label[]; 
+
+    onClose: () => void;
+    onSave: (data: { title: string; description: string }) => Promise<void> | void;
+    onLabelsChange?: () => void;
+};
+
+export function CardDetailModal({ card, boardId, availableLabels, onClose, onSave, onLabelsChange }: CardDetailModalProps) {
     const [title, setTitle] = useState(card.title);
     const [description, setDescription] = useState(card.description || '');
+    const [cardLabels, setCardLabels] = useState<Label[]>([]); 
+    const [showLabelPicker, setShowLabelPicker] = useState(false); 
+
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
@@ -27,8 +42,47 @@ export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps)
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [onClose]);
 
+    useEffect(() => { 
+        loadCardLabels(); 
+    }, [card.id]);
+
+    const loadCardLabels = async () => { 
+        try { 
+            const labels = await getCardLabels(card.id);
+            setCardLabels(labels); 
+        } catch (error) {
+            console.error('Failed to load card labels:', error);
+        }
+    };
+
     const handleSave = async () => {
-        await onSave({ title, description });
+        console.log('handleSave clicked', { title, description });
+        try {
+            await onSave({ title, description });
+            console.log('Save successful');
+        } catch (error) {
+            console.error('Save failed:', error);
+        }
+    };
+
+    const handleToggleLabel = async (label: Label) => {
+        const isAssigned = cardLabels.some(l => l.id === label.id);
+        
+        try {
+            if (isAssigned) {
+                await unassignLabel(label.id, card.id);
+                setCardLabels(cardLabels.filter(l => l.id !== label.id));
+            } else {
+                await assignLabel(label.id, card.id);
+                setCardLabels([...cardLabels, label]);
+            }
+            // Notify parent to refresh card labels display
+            if (onLabelsChange) {
+                onLabelsChange();
+            }
+        } catch (error) {
+            console.error('Failed to toggle label:', error);
+        }
     };
 
     if (typeof document === 'undefined') return null;
@@ -65,6 +119,24 @@ export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps)
                                 <p className="text-sm text-gray-500 mt-1">dans la liste <span className="underline decoration-1 cursor-pointer">À faire</span></p>
                             </div>
                         </div>
+                        
+                        {/* Labels Display */}
+                        {cardLabels.length > 0 && (
+                            <div className="ml-9 mt-3">
+                                <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Étiquettes</h4>
+                                <div className="flex flex-wrap gap-1">
+                                    {cardLabels.map((label) => (
+                                        <span
+                                            key={label.id}
+                                            className="px-3 py-1 rounded text-white text-xs font-medium"
+                                            style={{ backgroundColor: label.color }}
+                                        >
+                                            {label.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex gap-8">
@@ -87,12 +159,19 @@ export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps)
                                     />
                                     <div className="mt-2 flex gap-2">
                                         <button
-                                            onClick={handleSave}
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleSave();
+                                            }}
                                             className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-medium text-sm transition-colors"
                                         >
                                             Enregistrer
                                         </button>
                                         <button
+                                            type="button" 
+
                                             onClick={onClose}
                                             className="text-gray-700 px-4 py-1.5 rounded hover:bg-gray-200 font-medium text-sm transition-colors"
                                         >
@@ -107,7 +186,45 @@ export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps)
                         <div className="w-48 space-y-2">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ajouter à la carte</h3>
                             <SidebarButton icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />} label="Membres" />
-                            <SidebarButton icon={<path d="M7 7h10v3l5-5-5-5v3H7v4z" />} label="Étiquettes" />
+                            <div className="relative">
+                                <SidebarButton 
+                                    icon={<path d="M7 7h10v3l5-5-5-5v3H7v4z" />} 
+                                    label="Étiquettes" 
+                                    onClick={() => setShowLabelPicker(!showLabelPicker)}
+                                />
+                                {showLabelPicker && (
+                                    <div className="absolute left-full top-0 ml-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 p-3 z-10">
+                                        <h4 className="font-semibold text-sm text-gray-800 mb-2">Étiquettes</h4>
+                                        <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
+                                            {availableLabels.map((label) => {
+                                                const isAssigned = cardLabels.some(l => l.id === label.id);
+                                                return (
+                                                    <button
+                                                        key={label.id}
+                                                        onClick={() => handleToggleLabel(label)}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-50 transition-colors text-left"
+                                                    >
+                                                        <div
+                                                            className="flex-1 px-2 py-1 rounded text-white text-xs font-medium"
+                                                            style={{ backgroundColor: label.color }}
+                                                        >
+                                                            {label.name}
+                                                        </div>
+                                                        {isAssigned && (
+                                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                            {availableLabels.length === 0 && (
+                                                <p className="text-sm text-gray-500 text-center py-2">Aucune étiquette disponible</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                             <SidebarButton icon={<path d="M5 13l4 4L19 7" />} label="Checklist" />
                             <SidebarButton icon={<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} label="Dates" />
                         </div>
@@ -119,9 +236,12 @@ export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps)
     );
 }
 
-function SidebarButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+function SidebarButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
     return (
-        <button className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors text-left">
+        <button 
+            onClick={onClick}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors text-left"
+        >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 {icon}
             </svg>

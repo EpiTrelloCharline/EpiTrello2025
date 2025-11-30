@@ -75,6 +75,7 @@ model Board {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   members     BoardMember[]
   lists       List[]
+  labels      Label[]
 }
 
 model BoardMember {
@@ -110,5 +111,34 @@ model Card {
   updatedAt   DateTime @updatedAt
 
   list        List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  labels      CardLabel[]
+}
+
+model Label {
+  id        String   @id @default(cuid())
+  boardId   String
+  name      String
+  color     String   // hex color code
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  cards     CardLabel[]
+
+  @@index([boardId])
+}
+
+model CardLabel {
+  id        String   @id @default(cuid())
+  cardId    String
+  labelId   String
+  createdAt DateTime @default(now())
+
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([cardId, labelId])
+  @@index([cardId])
+  @@index([labelId])
 }
 

@@ -1,15 +1,27 @@
 import * as runtime from "@prisma/client/runtime/index-browser";
 export type * from '../models';
 export type * from './prismaNamespace';
-export declare const Decimal: any;
+export declare const Decimal: typeof runtime.Decimal;
 export declare const NullTypes: {
     DbNull: (new (secret: never) => typeof runtime.objectEnumValues.instances.DbNull);
     JsonNull: (new (secret: never) => typeof runtime.objectEnumValues.instances.JsonNull);
     AnyNull: (new (secret: never) => typeof runtime.objectEnumValues.instances.AnyNull);
 };
-export declare const DbNull: any;
-export declare const JsonNull: any;
-export declare const AnyNull: any;
+export declare const DbNull: {
+    _getNamespace(): string;
+    _getName(): string;
+    toString(): string;
+};
+export declare const JsonNull: {
+    _getNamespace(): string;
+    _getName(): string;
+    toString(): string;
+};
+export declare const AnyNull: {
+    _getNamespace(): string;
+    _getName(): string;
+    toString(): string;
+};
 export declare const ModelName: {
     readonly User: "User";
     readonly Workspace: "Workspace";
@@ -19,7 +31,12 @@ export declare const ModelName: {
     readonly List: "List";
 };
 export type ModelName = (typeof ModelName)[keyof typeof ModelName];
-export declare const TransactionIsolationLevel: any;
+export declare const TransactionIsolationLevel: {
+    readonly ReadUncommitted: "ReadUncommitted";
+    readonly ReadCommitted: "ReadCommitted";
+    readonly RepeatableRead: "RepeatableRead";
+    readonly Serializable: "Serializable";
+};
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel];
 export declare const UserScalarFieldEnum: {
     readonly id: "id";

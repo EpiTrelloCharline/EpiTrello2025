@@ -54,3 +54,51 @@ export async function updateCard(cardId: string, data: { title?: string; descrip
   });
   return res.json();
 }
+
+// Labels API
+export async function getLabelsByBoard(boardId: string) {
+  const res = await api(`/labels?boardId=${boardId}`);
+  return res.json();
+}
+
+export async function createLabel(boardId: string, name: string, color: string) {
+  const res = await api('/labels', {
+    method: 'POST',
+    body: JSON.stringify({ boardId, name, color }),
+  });
+  return res.json();
+}
+
+export async function updateLabel(labelId: string, data: { name?: string; color?: string }) {
+  const res = await api(`/labels/${labelId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function deleteLabel(labelId: string) {
+  const res = await api(`/labels/${labelId}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
+
+export async function assignLabel(labelId: string, cardId: string) {
+  const res = await api(`/labels/${labelId}/assign/${cardId}`, {
+    method: 'POST',
+  });
+  return res.json();
+}
+
+export async function unassignLabel(labelId: string, cardId: string) {
+  const res = await api(`/labels/${labelId}/unassign/${cardId}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
+
+export async function getCardLabels(cardId: string) {
+  const res = await api(`/labels/card/${cardId}`);
+  return res.json();
+}

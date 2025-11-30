@@ -2,6 +2,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { getCardLabels } from '@/lib/api';
 
 type Card = {
     id: string;
@@ -10,14 +11,23 @@ type Card = {
     position: any;
 };
 
+type Label = { 
+    id: string; 
+    boardId: string;
+    name: string; 
+    color: string;
+};
+
 type DraggableCardProps = {
     card: Card;
     onDelete: (cardId: string) => void;
     onUpdate: (cardId: string, data: { title?: string }) => void;
     onClick?: () => void;
+    refreshTrigger?: number; 
+
 };
 
-export function DraggableCard({ card, onDelete, onUpdate, onClick }: DraggableCardProps) {
+export function DraggableCard({ card, onDelete, onUpdate, onClick, refreshTrigger }: DraggableCardProps) {
     const {
         attributes,
         listeners,
@@ -31,12 +41,30 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick }: DraggableCa
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
     const [editTitle, setEditTitle] = useState(card.title);
     const [editPos, setEditPos] = useState({ top: 0, left: 0, width: 0 });
+    const [labels, setLabels] = useState<Label[]>([]); 
+
     const cardRef = useRef<HTMLElement | null>(null);
 
     // Reset title when card changes
     useEffect(() => {
         setEditTitle(card.title);
     }, [card.title]);
+
+    // Load card labels
+    useEffect(() => {
+        console.log('DraggableCard: refreshTrigger changed', { cardId: card.id, refreshTrigger });
+        loadLabels();
+    }, [card.id, refreshTrigger]);
+
+    const loadLabels = async () => {
+        try {
+            const cardLabels = await getCardLabels(card.id);
+            console.log('DraggableCard: labels loaded', { cardId: card.id, labels: cardLabels });
+            setLabels(cardLabels);
+        } catch (error) {
+            console.error('Failed to load labels:', error);
+        }
+    };
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -80,6 +108,20 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick }: DraggableCa
                 className="bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative"
                 onClick={onClick}
             >
+                {/* Labels badges */}
+                {labels.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-1">
+                        {labels.map((label) => (
+                            <span
+                                key={label.id}
+                                className="h-2 w-10 rounded"
+                                style={{ backgroundColor: label.color }}
+                                title={label.name}
+                            />
+                        ))}
+                    </div>
+                )}
+                
                 <span className="text-sm text-[#172b4d] block min-h-[1.5em] break-words">{card.title}</span>
                 <button
                     className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-gray-500 z-10"
