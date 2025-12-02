@@ -11,13 +11,15 @@ const common_1 = require("@nestjs/common");
 const boards_controller_1 = require("./boards.controller");
 const boards_service_1 = require("./boards.service");
 const prisma_service_1 = require("../prisma.service");
+const board_permissions_service_1 = require("./board-permissions.service");
 let BoardsModule = class BoardsModule {
 };
 exports.BoardsModule = BoardsModule;
 exports.BoardsModule = BoardsModule = __decorate([
     (0, common_1.Module)({
         controllers: [boards_controller_1.BoardsController],
-        providers: [boards_service_1.BoardsService, prisma_service_1.PrismaService],
+        providers: [boards_service_1.BoardsService, board_permissions_service_1.BoardPermissionsService, prisma_service_1.PrismaService],
+        exports: [board_permissions_service_1.BoardPermissionsService],
     })
 ], BoardsModule);
 //# sourceMappingURL=boards.module.js.map

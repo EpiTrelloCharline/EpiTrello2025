@@ -6,6 +6,7 @@ export declare class ListsController {
     constructor(svc: ListsService);
     list(boardId: string, req: any): Promise<{
         id: string;
+<<<<<<< HEAD
         title: string;
         isArchived: boolean;
         boardId: string;
@@ -24,5 +25,25 @@ export declare class ListsController {
         isArchived: boolean;
         boardId: string;
         position: import("@prisma/client/runtime/library").Decimal;
+=======
+        boardId: string;
+        title: string;
+        position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
+    }[]>;
+    create(dto: CreateListDto, req: any): Promise<{
+        id: string;
+        boardId: string;
+        title: string;
+        position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
+    }>;
+    move(dto: MoveListDto, req: any): Promise<{
+        id: string;
+        boardId: string;
+        title: string;
+        position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
+>>>>>>> origin/develop
     }>;
 }

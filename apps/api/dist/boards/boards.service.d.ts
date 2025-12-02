@@ -22,6 +22,30 @@ export declare class BoardsService {
         isArchived: boolean;
     }>;
     getOne(userId: string, boardId: string): Promise<{
+<<<<<<< HEAD
+=======
+        members: ({
+            user: {
+                id: string;
+                email: string;
+                name: string | null;
+                createdAt: Date;
+                updatedAt: Date;
+            };
+        } & {
+            id: string;
+            userId: string;
+            role: import("@prisma/client").$Enums.BoardRole;
+            boardId: string;
+        })[];
+        labels: {
+            id: string;
+            name: string;
+            boardId: string;
+            color: string | null;
+        }[];
+    } & {
+>>>>>>> origin/develop
         id: string;
         createdAt: Date;
         updatedAt: Date;

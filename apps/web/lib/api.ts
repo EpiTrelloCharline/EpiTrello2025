@@ -54,6 +54,7 @@ export async function updateCard(cardId: string, data: { title?: string; descrip
   });
   return res.json();
 }
+<<<<<<< HEAD
 
 // Labels API
 export async function getLabelsByBoard(boardId: string) {
@@ -102,3 +103,5 @@ export async function getCardLabels(cardId: string) {
   const res = await api(`/labels/card/${cardId}`);
   return res.json();
 }
+=======
+>>>>>>> origin/develop

@@ -38,9 +38,12 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
+<<<<<<< HEAD
       pnpm:
         specifier: ^10.24.0
         version: 10.24.0
+=======
+>>>>>>> origin/develop
       reflect-metadata:
         specifier: ^0.1.13
         version: 0.1.14
@@ -3031,11 +3034,14 @@ packages:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
     engines: {node: '>=4'}
 
+<<<<<<< HEAD
   pnpm@10.24.0:
     resolution: {integrity: sha512-Af+K5xtEGZA7ZcYPstydNM+LtuBtA73hEu8496NNaQTEJLpmvqXNzxKJAjC/OflYBHMUDtnJRv7zKLblI4o0Wg==}
     engines: {node: '>=18.12'}
     hasBin: true
 
+=======
+>>>>>>> origin/develop
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
@@ -7373,8 +7379,11 @@ snapshots:
 
   pluralize@8.0.0: {}
 
+<<<<<<< HEAD
   pnpm@10.24.0: {}
 
+=======
+>>>>>>> origin/develop
   possible-typed-array-names@1.1.0: {}
 
   postcss-import@15.1.0(postcss@8.5.6):

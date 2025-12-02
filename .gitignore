@@ -11,5 +11,9 @@ apps/api/dist/
 .env
 
 # TypeScript
+<<<<<<< HEAD
 next-env.d.ts
 
+=======
+next-env.d.ts
+>>>>>>> origin/develop
