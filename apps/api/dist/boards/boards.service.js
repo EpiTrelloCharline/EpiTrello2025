@@ -36,7 +36,13 @@ let BoardsService = class BoardsService {
         const member = await this.prisma.boardMember.findFirst({ where: { boardId, userId } });
         if (!member)
             throw new common_1.ForbiddenException('Not a board member');
-        const board = await this.prisma.board.findUnique({ where: { id: boardId } });
+        const board = await this.prisma.board.findUnique({
+            where: { id: boardId },
+            include: {
+                members: { include: { user: true } },
+                labels: true,
+            },
+        });
         if (!board)
             throw new common_1.NotFoundException('Board not found');
         return board;

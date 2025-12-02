@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListsController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const board_read_guard_1 = require("../boards/guards/board-read.guard");
+const board_write_guard_1 = require("../boards/guards/board-write.guard");
 const lists_service_1 = require("./lists.service");
 const create_list_dto_1 = require("./dto/create-list.dto");
 const move_list_dto_1 = require("./dto/move-list.dto");
@@ -34,6 +36,7 @@ let ListsController = class ListsController {
 };
 exports.ListsController = ListsController;
 __decorate([
+    (0, common_1.UseGuards)(board_read_guard_1.BoardReadGuard),
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('boardId')),
     __param(1, (0, common_1.Request)()),
@@ -42,6 +45,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ListsController.prototype, "list", null);
 __decorate([
+    (0, common_1.UseGuards)(board_write_guard_1.BoardWriteGuard),
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
@@ -50,6 +54,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ListsController.prototype, "create", null);
 __decorate([
+    (0, common_1.UseGuards)(board_write_guard_1.BoardWriteGuard),
     (0, common_1.Post)('move'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),

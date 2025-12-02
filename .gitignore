@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Next.js
+apps/web/.next/
+
+# NestJS
+apps/api/dist/
+
+# Environment variables
+.env
+
+# TypeScript
+next-env.d.ts

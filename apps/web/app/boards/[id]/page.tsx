@@ -18,10 +18,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { api, getCardsByList, createCard, moveCard, updateCard } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
+import { BoardMembers } from './BoardMembers';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
-type Member = { id: string; userId: string; user: { name: string | null; email: string } };
+type Member = { id: string; userId: string; role: string; user: { id: string; name: string | null; email: string } };
 type Card = {
   id: string;
   listId: string;
@@ -37,6 +38,7 @@ type User = { id: string; name: string | null; email: string };
 type Board = {
   id: string;
   title: string;
+  workspaceId: string;
   labels: Label[];
   members: Member[];
 };
@@ -67,7 +69,7 @@ export default function BoardPage() {
     })
   );
 
-  useEffect(() => {
+  const fetchBoardData = () => {
     if (!token || !params?.id) return;
 
     // Fetch Board Details (for labels/members)
@@ -95,6 +97,10 @@ export default function BoardPage() {
         console.error(err);
         setLists([]);
       });
+  };
+
+  useEffect(() => {
+    fetchBoardData();
   }, [token, params?.id]);
 
   useEffect(() => {
@@ -379,6 +385,15 @@ export default function BoardPage() {
       {/* Header du board */}
       <div className="h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 text-white gap-4">
         <div className="font-bold text-lg">Epi Trello</div>
+
+        {/* Board Members & Invite */}
+        {board && (
+          <BoardMembers
+            board={board}
+            members={board.members}
+            onMemberAdded={fetchBoardData}
+          />
+        )}
 
         <div className="flex flex-wrap items-center gap-4 flex-1">
           {/* Search Bar */}
