@@ -1,5 +1,6 @@
 import { BoardsService } from './boards.service';
 import { CreateBoardDto } from './dto/create-board.dto';
+import { InviteMemberDto } from './dto/invite-member.dto';
 export declare class BoardsController {
     private svc;
     constructor(svc: BoardsService);
@@ -50,5 +51,21 @@ export declare class BoardsController {
         workspaceId: string;
         title: string;
         isArchived: boolean;
+    }>;
+    getMembers(id: string, req: any): Promise<{
+        id: string;
+        userId: string;
+        name: string;
+        email: string;
+        role: import("@prisma/client").$Enums.BoardRole;
+        avatar: any;
+    }[]>;
+    inviteMember(id: string, dto: InviteMemberDto, req: any): Promise<{
+        id: string;
+        userId: string;
+        name: string;
+        email: string;
+        role: import("@prisma/client").$Enums.BoardRole;
+        avatar: any;
     }>;
 }

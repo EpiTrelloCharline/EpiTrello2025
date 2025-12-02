@@ -16,8 +16,10 @@ exports.BoardsController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const board_read_guard_1 = require("./guards/board-read.guard");
+const board_admin_guard_1 = require("./guards/board-admin.guard");
 const boards_service_1 = require("./boards.service");
 const create_board_dto_1 = require("./dto/create-board.dto");
+const invite_member_dto_1 = require("./dto/invite-member.dto");
 let BoardsController = class BoardsController {
     constructor(svc) {
         this.svc = svc;
@@ -30,6 +32,12 @@ let BoardsController = class BoardsController {
     }
     one(id, req) {
         return this.svc.getOne(req.user.id, id);
+    }
+    getMembers(id, req) {
+        return this.svc.getMembers(req.user.id, id);
+    }
+    inviteMember(id, dto, req) {
+        return this.svc.inviteMember(req.user.id, id, dto);
     }
 };
 exports.BoardsController = BoardsController;
@@ -58,6 +66,25 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], BoardsController.prototype, "one", null);
+__decorate([
+    (0, common_1.UseGuards)(board_read_guard_1.BoardReadGuard),
+    (0, common_1.Get)(':id/members'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], BoardsController.prototype, "getMembers", null);
+__decorate([
+    (0, common_1.UseGuards)(board_admin_guard_1.BoardAdminGuard),
+    (0, common_1.Post)(':id/invite'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, invite_member_dto_1.InviteMemberDto, Object]),
+    __metadata("design:returntype", void 0)
+], BoardsController.prototype, "inviteMember", null);
 exports.BoardsController = BoardsController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('boards'),

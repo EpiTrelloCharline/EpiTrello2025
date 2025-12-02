@@ -7,8 +7,8 @@ export class BoardPermissionsService {
     constructor(private prisma: PrismaService) { }
 
     /**
-     * Récupère le rôle d'un utilisateur sur un board
-     * @returns Le rôle de l'utilisateur ou null s'il n'est pas membre
+     * Retrieve the role of a user on a specific board
+     * @returns The user's role or null if they are not a member
      */
     async getUserBoardRole(userId: string, boardId: string): Promise<BoardRole | null> {
         const member = await this.prisma.boardMember.findFirst({
@@ -19,24 +19,24 @@ export class BoardPermissionsService {
     }
 
     /**
-     * Vérifie si un rôle a accès en lecture
-     * Tous les rôles (OWNER, ADMIN, MEMBER, OBSERVER) ont accès en lecture
+     * Checks if a role has read access
+     * All roles (OWNER, ADMIN, MEMBER, OBSERVER) have read access
      */
     hasReadAccess(role: BoardRole): boolean {
         return ['OWNER', 'ADMIN', 'MEMBER', 'OBSERVER'].includes(role);
     }
 
     /**
-     * Vérifie si un rôle a accès en écriture
-     * Seuls OWNER, ADMIN et MEMBER ont accès en écriture
-     * OBSERVER est bloqué
+     * Checks if a role has write access
+     * Only OWNER, ADMIN, and MEMBER have write access
+     * OBSERVER is blocked
      */
     hasWriteAccess(role: BoardRole): boolean {
         return ['OWNER', 'ADMIN', 'MEMBER'].includes(role);
     }
 
     /**
-     * Récupère le boardId depuis un listId
+     * Retrieves the boardId from a listId
      */
     async getBoardIdFromList(listId: string): Promise<string> {
         const list = await this.prisma.list.findUnique({
@@ -52,7 +52,7 @@ export class BoardPermissionsService {
     }
 
     /**
-     * Récupère le boardId depuis un cardId
+     * Retrieves the boardId from a cardId
      */
     async getBoardIdFromCard(cardId: string): Promise<string> {
         const card = await this.prisma.card.findUnique({

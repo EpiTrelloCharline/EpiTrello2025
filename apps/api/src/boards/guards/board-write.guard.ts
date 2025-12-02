@@ -13,21 +13,21 @@ export class BoardWriteGuard implements CanActivate {
             throw new ForbiddenException('Utilisateur non authentifié');
         }
 
-        // Déterminer le boardId depuis les paramètres
+        // Determine the boardId from the request parameters
         const boardId = await this.resolveBoardId(request);
 
         if (!boardId) {
             throw new ForbiddenException('Board non spécifié');
         }
 
-        // Récupérer le rôle de l'utilisateur
+        // Retrieve the user's role
         const role = await this.permissions.getUserBoardRole(userId, boardId);
 
         if (!role) {
             throw new ForbiddenException('Vous n\'êtes pas membre de ce board');
         }
 
-        // Vérifier l'accès en écriture (bloque OBSERVER)
+        // Check write access (blocks OBSERVER)
         if (!this.permissions.hasWriteAccess(role)) {
             throw new ForbiddenException('Vous n\'avez pas les droits pour cette action');
         }
@@ -36,11 +36,11 @@ export class BoardWriteGuard implements CanActivate {
     }
 
     /**
-     * Résout le boardId depuis les paramètres de la requête
-     * Supporte: params.id, params.boardId, query.boardId, body.boardId, query.listId, body.listId, params.id (card)
+     * Resolves the boardId from the request parameters
+     * Supports: params.id, params.boardId, query.boardId, body.boardId, query.listId, body.listId, params.id (card)
      */
     private async resolveBoardId(request: any): Promise<string | null> {
-        // Cas 1: boardId directement dans les paramètres ou query
+        // Case 1: boardId directly in params, query or body
         if (request.params?.id && request.route?.path?.includes('/boards/')) {
             return request.params.id;
         }
@@ -54,13 +54,13 @@ export class BoardWriteGuard implements CanActivate {
             return request.body.boardId;
         }
 
-        // Cas 2: listId - remonter au board
+        // Case 2: listId - derive boardId from the list
         const listId = request.query?.listId || request.body?.listId;
         if (listId) {
             return await this.permissions.getBoardIdFromList(listId);
         }
 
-        // Cas 3: cardId - remonter au board via la liste
+        // Case 3: cardId - derive the boardId via the card's list
         const cardId = request.params?.id;
         if (cardId && request.route?.path?.includes('/cards/')) {
             return await this.permissions.getBoardIdFromCard(cardId);

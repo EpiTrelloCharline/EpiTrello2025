@@ -47,6 +47,94 @@ let BoardsService = class BoardsService {
             throw new common_1.NotFoundException('Board not found');
         return board;
     }
+    async getMembers(userId, boardId) {
+        const isMember = await this.prisma.boardMember.findFirst({
+            where: { boardId, userId },
+        });
+        if (!isMember) {
+            throw new common_1.ForbiddenException('Vous n\'êtes pas membre de ce board');
+        }
+        const members = await this.prisma.boardMember.findMany({
+            where: { boardId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        name: true,
+                    },
+                },
+            },
+            orderBy: [
+                { role: 'asc' },
+                { user: { name: 'asc' } },
+            ],
+        });
+        return members.map((member) => ({
+            id: member.id,
+            userId: member.user.id,
+            name: member.user.name,
+            email: member.user.email,
+            role: member.role,
+            avatar: null,
+        }));
+    }
+    async inviteMember(userId, boardId, dto) {
+        const board = await this.prisma.board.findUnique({
+            where: { id: boardId },
+        });
+        if (!board) {
+            throw new common_1.NotFoundException('Board non trouvé');
+        }
+        const invitedUser = await this.prisma.user.findUnique({
+            where: { email: dto.email },
+        });
+        if (!invitedUser) {
+            throw new common_1.NotFoundException('Utilisateur non trouvé avec cet email');
+        }
+        const existingMember = await this.prisma.boardMember.findFirst({
+            where: {
+                boardId,
+                userId: invitedUser.id,
+            },
+        });
+        if (existingMember) {
+            throw new common_1.BadRequestException('Cet utilisateur est déjà membre du board');
+        }
+        const isWorkspaceMember = await this.prisma.workspaceMember.findFirst({
+            where: {
+                workspaceId: board.workspaceId,
+                userId: invitedUser.id,
+            },
+        });
+        if (!isWorkspaceMember) {
+            throw new common_1.BadRequestException('L\'utilisateur doit être membre du workspace avant d\'être invité au board');
+        }
+        const newMember = await this.prisma.boardMember.create({
+            data: {
+                boardId,
+                userId: invitedUser.id,
+                role: dto.role,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        email: true,
+                        name: true,
+                    },
+                },
+            },
+        });
+        return {
+            id: newMember.id,
+            userId: newMember.user.id,
+            name: newMember.user.name,
+            email: newMember.user.email,
+            role: newMember.role,
+            avatar: null,
+        };
+    }
 };
 exports.BoardsService = BoardsService;
 exports.BoardsService = BoardsService = __decorate([
