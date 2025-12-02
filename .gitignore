@@ -6,9 +6,17 @@ apps/web/.next/
 
 # NestJS
 apps/api/dist/
+dist/
 
 # Environment variables
 .env
+.env.local
+.env.test
 
 # TypeScript
 next-env.d.ts
+*.tsbuildinfo
+
+# Misc
+*.log
+.DS_Store
