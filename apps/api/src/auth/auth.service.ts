@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async register(email: string, password: string, name?: string) {
     // Vérifier si l'utilisateur existe déjà
@@ -24,7 +24,7 @@ export class AuthService {
     return this.generateToken(user.id, user.email);
   }
 
-  async login(email: string, password: string) {
+  async login(email: string) {
     // Pour l'instant, on ignore le password - à améliorer plus tard
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
