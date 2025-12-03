@@ -19,3 +19,7 @@ apps/api/dist/
 
 # TypeScript
 next-env.d.ts
+*.tsbuildinfo
+
+# Test environment
+.env.test
