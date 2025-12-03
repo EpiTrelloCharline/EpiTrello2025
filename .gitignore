@@ -6,6 +6,7 @@ node_modules/
 dist/
 apps/web/.next/
 apps/api/dist/
+dist/
 
 # Environment variables
 .env
