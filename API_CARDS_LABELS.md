@@ -75,8 +75,8 @@ Move a card to a different position or list.
 ```json
 {
   "cardId": "card-456",
-  "listId": "list-xyz", // Optional: if moving to another list
-  "newPosition": 1      // Optional: new position index
+  "listId": "list-xyz",
+  "newPosition": 1
 }
 ```
 
@@ -86,7 +86,6 @@ Move a card to a different position or list.
   "id": "card-456",
   "listId": "list-xyz",
   "position": 1,
-  // ... other card fields
 }
 ```
 
@@ -111,7 +110,6 @@ Update card details (title, description, etc.).
   "title": "Updated Title",
   "description": "Updated description",
   "isArchived": true,
-  // ... other card fields
 }
 ```
 
@@ -126,7 +124,6 @@ Archive a card (soft delete).
 {
   "id": "card-123",
   "isArchived": true,
-  // ... other card fields
 }
 ```
 
