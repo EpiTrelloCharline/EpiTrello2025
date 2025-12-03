@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { BoardReadGuard } from './guards/board-read.guard';
 
 import { BoardsService } from './boards.service';
 
@@ -9,7 +10,7 @@ import { CreateBoardDto } from './dto/create-board.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('boards')
 export class BoardsController {
-  constructor(private svc: BoardsService) {}
+  constructor(private svc: BoardsService) { }
 
   @Get()
   list(@Query('workspaceId') workspaceId: string, @Request() req: any) {
@@ -21,6 +22,7 @@ export class BoardsController {
     return this.svc.create(req.user.id, dto);
   }
 
+  @UseGuards(BoardReadGuard)
   @Get(':id')
   one(@Param('id') id: string, @Request() req: any) {
     return this.svc.getOne(req.user.id, id);

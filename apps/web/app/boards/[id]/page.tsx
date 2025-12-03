@@ -7,16 +7,41 @@ import {
   DragEndEvent,
   DragStartEvent,
   DragOverEvent,
-  useDroppable
+  useDroppable,
+  useSensors,
+  useSensor,
+  PointerSensor
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { api, getCardsByList, createCard, moveCard } from '@/lib/api';
+import { api, getCardsByList, createCard, moveCard, updateCard } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
+import { CardDetailModal } from './CardDetailModal';
+import { BoardMembers } from './BoardMembers';
 
 type List = { id: string; title: string; position: number };
-type Card = { id: string; listId: string; title: string; position: string };
+type Label = { id: string; name: string; color: string };
+type Member = { id: string; userId: string; role: string; user: { id: string; name: string | null; email: string } };
+type Card = {
+  id: string;
+  listId: string;
+  title: string;
+  position: string;
+  labels?: Label[];
+  members?: Member[]; // Note: members on card are User[] in schema, but we might get them as User objects. Let's check api response.
+  // Actually, schema says members User[]. So card.members will be User objects.
+  // But board.members are BoardMember[].
+};
+type User = { id: string; name: string | null; email: string };
+
+type Board = {
+  id: string;
+  title: string;
+  workspaceId: string;
+  labels: Label[];
+  members: Member[];
+};
 
 export default function BoardPage() {
   const params = useParams<{ id: string }>();
@@ -25,19 +50,72 @@ export default function BoardPage() {
   const [title, setTitle] = useState('');
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [previousCardsByList, setPreviousCardsByList] = useState<Record<string, Card[]>>({});
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [board, setBoard] = useState<Board | null>(null);
+
+  const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0;
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
-  useEffect(() => {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
+
+  const fetchBoardData = () => {
     if (!token || !params?.id) return;
 
-    api(`/lists?boardId=${params.id}`).then(r => r.json()).then(setLists);
+    // Fetch Board Details (for labels/members)
+    api(`/boards/${params.id}`)
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to fetch board');
+        return r.json();
+      })
+      .then(data => setBoard(data))
+      .catch(console.error);
+
+    api(`/lists?boardId=${params.id}`)
+      .then(r => {
+        if (!r.ok) throw new Error('Failed to fetch lists');
+        return r.json();
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setLists(data);
+        } else {
+          setLists([]);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        setLists([]);
+      });
+  };
+
+  useEffect(() => {
+    fetchBoardData();
   }, [token, params?.id]);
 
   useEffect(() => {
     async function loadCards() {
       const results = await Promise.all(
         lists.map(async (list) => {
-          const cards = await getCardsByList(list.id);
+          let cards: Card[] = [];
+          try {
+            const result = await getCardsByList(list.id);
+            if (Array.isArray(result)) {
+              cards = result;
+            }
+          } catch (e) {
+            console.error(`Failed to load cards for list ${list.id}`, e);
+          }
           return [list.id, cards] as const;
         })
       );
@@ -65,6 +143,37 @@ export default function BoardPage() {
     setLists(prev => [...prev, l]);
     setTitle('');
   }
+
+  function cardMatchesFilters(card: Card) {
+    if (searchTerm.trim() !== "") {
+      const text = searchTerm.trim().toLowerCase();
+      if (!card.title.toLowerCase().includes(text)) return false;
+    }
+
+    if (selectedLabelIds.length > 0) {
+      const cardLabelIds = card.labels?.map(l => l.id) ?? [];
+      const hasLabel = selectedLabelIds.some(id => cardLabelIds.includes(id));
+      if (!hasLabel) return false;
+    }
+
+    if (selectedMemberIds.length > 0) {
+      // card.members are Users, so we check their IDs
+      const cardMemberIds = card.members?.map(m => m.id) ?? [];
+      const hasMember = selectedMemberIds.some(id => cardMemberIds.includes(id));
+      if (!hasMember) return false;
+    }
+
+    return true;
+  }
+
+  const filteredCardsByList = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(cardsByList).map(([listId, cards]) => [
+        listId,
+        cards.filter(card => cardMatchesFilters(card)),
+      ])
+    );
+  }, [cardsByList, searchTerm, selectedLabelIds, selectedMemberIds]);
 
   // Helper: Find card location in state
   function findCardLocation(
@@ -113,6 +222,8 @@ export default function BoardPage() {
   }
 
   async function handleDragEnd(event: DragEndEvent) {
+    if (isFiltering) return; // Disable drag when filtering
+
     const { active, over } = event;
     if (!over) return;
 
@@ -174,7 +285,7 @@ export default function BoardPage() {
       } catch (error) {
         console.error('Failed to move card:', error);
         setCardsByList(previousCardsByList);
-        alert('Failed to move card. Changes have been reverted.');
+        alert('Échec du déplacement de la carte. Les modifications ont été annulées.');
       }
     } else {
       // LIST DRAGGING
@@ -217,7 +328,7 @@ export default function BoardPage() {
     } catch (error) {
       console.error('Failed to delete card:', error);
       setCardsByList(previousCardsByList);
-      alert('Failed to delete card. Changes have been reverted.');
+      alert('Échec de la suppression de la carte. Les modifications ont été annulées.');
     }
   }
 
@@ -243,19 +354,139 @@ export default function BoardPage() {
     } catch (error) {
       console.error('Failed to update card:', error);
       setCardsByList(previousCardsByList);
-      alert('Failed to update card. Changes have been reverted.');
+      alert('Échec de la mise à jour de la carte. Les modifications ont été annulées.');
+    }
+  }
+
+  async function handleSaveCardDetails(data: { title: string; description: string }) {
+    if (!selectedCard) return;
+
+    // Optimistic update
+    setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
+    setCardsByList(prev => ({
+      ...prev,
+      [selectedCard.listId]: prev[selectedCard.listId].map(c =>
+        c.id === selectedCard.id ? { ...c, ...data } : c
+      )
+    }));
+
+    try {
+      await updateCard(selectedCard.id, data);
+      setSelectedCard(null);
+    } catch (error) {
+      console.error('Failed to update card details:', error);
+      setCardsByList(previousCardsByList);
+      alert('Échec de la mise à jour des détails de la carte. Les modifications ont été annulées.');
     }
   }
 
   return (
     <div className="h-screen flex flex-col bg-[#0079bf]">
       {/* Header du board */}
-      <div className="h-12 bg-black/20 backdrop-blur-sm flex items-center px-4 text-white font-bold">
-        Trello Clone
+      <div className="h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 text-white gap-4">
+        <div className="font-bold text-lg">Epi Trello</div>
+
+        {/* Board Members & Invite */}
+        {board && (
+          <BoardMembers
+            board={board}
+            members={board.members}
+            onMemberAdded={fetchBoardData}
+          />
+        )}
+
+        <div className="flex flex-wrap items-center gap-4 flex-1">
+          {/* Search Bar */}
+          <input
+            type="text"
+            placeholder="Rechercher une carte..."
+            className="bg-white/20 text-white placeholder-white/70 px-3 py-1.5 rounded text-sm border border-transparent focus:border-blue-300 focus:outline-none focus:bg-white/30 transition-all"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+
+          {/* Label Filter */}
+          {board?.labels && board.labels.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium opacity-80">Labels:</span>
+              <div className="flex flex-wrap gap-1">
+                {board.labels.map(label => {
+                  const isSelected = selectedLabelIds.includes(label.id);
+                  return (
+                    <button
+                      key={label.id}
+                      onClick={() => {
+                        setSelectedLabelIds(prev =>
+                          isSelected ? prev.filter(id => id !== label.id) : [...prev, label.id]
+                        );
+                      }}
+                      className={`px-2 py-0.5 rounded text-xs font-semibold transition-all border ${isSelected
+                          ? 'border-white ring-2 ring-white/50 scale-105'
+                          : 'border-transparent opacity-80 hover:opacity-100'
+                        }`}
+                      style={{ backgroundColor: label.color || '#61bd4f', color: 'white' }}
+                    >
+                      {label.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Member Filter */}
+          {board?.members && board.members.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium opacity-80">Membres:</span>
+              <div className="flex -space-x-2 overflow-hidden p-1">
+                {board.members.map(member => {
+                  const isSelected = selectedMemberIds.includes(member.userId);
+                  return (
+                    <button
+                      key={member.id}
+                      onClick={() => {
+                        setSelectedMemberIds(prev =>
+                          isSelected ? prev.filter(id => id !== member.userId) : [...prev, member.userId]
+                        );
+                      }}
+                      className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-transform ${isSelected ? 'border-blue-400 z-10 scale-110' : 'border-transparent hover:z-10 hover:scale-105'
+                        }`}
+                      style={{ backgroundColor: '#dfe1e6', color: '#172b4d' }}
+                      title={member.user.name || member.user.email}
+                    >
+                      {member.user.name ? member.user.name[0].toUpperCase() : member.user.email[0].toUpperCase()}
+                      {isSelected && (
+                        <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full w-3 h-3 border border-white"></div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Clear Filters */}
+          {isFiltering && (
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedLabelIds([]);
+                setSelectedMemberIds([]);
+              }}
+              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-white transition-colors"
+            >
+              Effacer filtres
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
-        <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
           <div className="h-full flex items-start gap-4">
             <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
               {lists.map(l => (
@@ -263,10 +494,12 @@ export default function BoardPage() {
                   key={l.id}
                   id={l.id}
                   title={l.title}
-                  cards={cardsByList[l.id] ?? []}
+                  cards={filteredCardsByList[l.id] ?? []}
                   setCardsByList={setCardsByList}
                   onDeleteCard={handleDeleteCard}
                   onUpdateCard={handleUpdateCard}
+                  onCardClick={setSelectedCard}
+                  isDragDisabled={isFiltering}
                 />
               ))}
             </SortableContext>
@@ -278,7 +511,7 @@ export default function BoardPage() {
                   <input
                     autoFocus
                     className="w-full px-2 py-1 text-sm border-2 border-blue-600 rounded mb-2 focus:outline-none"
-                    placeholder="Enter list title..."
+                    placeholder="Saisissez le titre de la liste..."
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     onKeyDown={e => {
@@ -287,7 +520,7 @@ export default function BoardPage() {
                     }}
                   />
                   <div className="flex items-center gap-2">
-                    <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={createList}>Add list</button>
+                    <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={createList}>Ajouter une liste</button>
                     <button className="text-gray-600 hover:text-gray-800" onClick={() => setTitle('')}>✕</button>
                   </div>
                 </div>
@@ -296,25 +529,35 @@ export default function BoardPage() {
                   className="w-full text-left text-white font-medium flex items-center gap-2 px-2 py-1"
                   onClick={() => setTitle(' ')} // Hack to show input
                 >
-                  <span>+</span> Add another list
+                  <span>+</span> Ajouter une autre liste
                 </button>
               )}
             </div>
           </div>
         </DndContext>
       </div>
+
+      {selectedCard && (
+        <CardDetailModal
+          card={selectedCard}
+          onClose={() => setSelectedCard(null)}
+          onSave={handleSaveCardDetails}
+        />
+      )}
     </div>
   );
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }: {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, isDragDisabled }: {
   id: string;
   title: string;
   cards: Card[];
   setCardsByList: React.Dispatch<React.SetStateAction<Record<string, Card[]>>>;
   onDeleteCard: (cardId: string) => void;
   onUpdateCard: (cardId: string, data: { title?: string }) => void;
+  onCardClick: (card: Card) => void;
+  isDragDisabled: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const { setNodeRef: setDroppableRef } = useDroppable({ id: `list-${id}` });
@@ -368,7 +611,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
           [id]: currentCards.filter((c) => c.id !== tempId),
         };
       });
-      alert('Failed to create card');
+      alert('Échec de la création de la carte');
     }
   }
 
@@ -388,6 +631,8 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
               card={card}
               onDelete={onDeleteCard}
               onUpdate={onUpdateCard}
+              onClick={() => onCardClick(card)}
+              isDragDisabled={isDragDisabled}
             />
           ))}
         </SortableContext>
@@ -399,7 +644,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
             <textarea
               autoFocus
               className="w-full bg-white border-none shadow-sm rounded-lg p-2 text-sm mb-2 resize-none focus:ring-2 focus:ring-blue-600"
-              placeholder="Enter a title for this card..."
+              placeholder="Saisissez un titre pour cette carte..."
               rows={3}
               value={newCardTitle}
               onChange={(e) => setNewCardTitle(e.target.value)}
@@ -412,7 +657,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
               }}
             />
             <div className="flex items-center gap-2">
-              <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={handleAddCard}>Add card</button>
+              <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={handleAddCard}>Ajouter une carte</button>
               <button className="text-gray-600 hover:text-gray-800" onClick={() => setIsAdding(false)}>✕</button>
             </div>
           </div>
@@ -421,7 +666,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard }
             className="w-full text-left text-[#5e6c84] hover:bg-[#091e4214] hover:text-[#172b4d] p-2 rounded text-sm flex items-center gap-2 transition-colors"
             onClick={() => setIsAdding(true)}
           >
-            <span>+</span> Add a card
+            <span>+</span> Ajouter une carte
           </button>
         )}
       </div>
