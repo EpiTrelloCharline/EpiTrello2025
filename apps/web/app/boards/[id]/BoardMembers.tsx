@@ -89,7 +89,7 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
       setSuccess('Membre invité avec succès!');
       setEmail('');
       setIsInviting(false);
-      
+
       // Rafraîchir la liste des membres
       setTimeout(() => {
         onMemberAdded();
@@ -97,7 +97,7 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
       }, 2000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
-      
+
       // Messages d'erreur plus conviviaux
       if (errorMessage.includes('not found') || errorMessage.includes('User not found')) {
         setError('Utilisateur non trouvé. Cet email n\'existe pas dans le système.');
@@ -218,7 +218,7 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
 
             <div className="mt-3 pt-3 border-t border-gray-200">
               <p className="text-xs text-gray-500">
-                💡 L'utilisateur doit déjà avoir un compte pour être invité.
+                💡 L&apos;utilisateur doit déjà avoir un compte pour être invité.
               </p>
             </div>
           </div>
