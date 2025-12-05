@@ -6,51 +6,53 @@ export declare class BoardsService {
     constructor(prisma: PrismaService);
     listInWorkspace(userId: string, workspaceId: string): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string;
-        workspaceId: string;
         title: string;
         isArchived: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        workspaceId: string;
+        createdById: string;
     }[]>;
     create(userId: string, dto: CreateBoardDto): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string;
-        workspaceId: string;
         title: string;
         isArchived: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        workspaceId: string;
+        createdById: string;
     }>;
     getOne(userId: string, boardId: string): Promise<{
+        labels: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            boardId: string;
+            color: string;
+        }[];
         members: ({
             user: {
                 id: string;
-                email: string;
-                name: string | null;
                 createdAt: Date;
                 updatedAt: Date;
+                name: string | null;
+                email: string;
             };
         } & {
             id: string;
+            boardId: string;
             userId: string;
             role: import("@prisma/client").$Enums.BoardRole;
-            boardId: string;
         })[];
-        labels: {
-            id: string;
-            name: string;
-            boardId: string;
-            color: string | null;
-        }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string;
-        workspaceId: string;
         title: string;
         isArchived: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        workspaceId: string;
+        createdById: string;
     }>;
     getMembers(userId: string, boardId: string): Promise<{
         id: string;
@@ -58,7 +60,6 @@ export declare class BoardsService {
         name: string;
         email: string;
         role: import("@prisma/client").$Enums.BoardRole;
-        avatar: any;
     }[]>;
     inviteMember(userId: string, boardId: string, dto: InviteMemberDto): Promise<{
         id: string;

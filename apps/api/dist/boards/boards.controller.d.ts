@@ -6,51 +6,53 @@ export declare class BoardsController {
     constructor(svc: BoardsService);
     list(workspaceId: string, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string;
-        workspaceId: string;
         title: string;
         isArchived: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        workspaceId: string;
+        createdById: string;
     }[]>;
     create(dto: CreateBoardDto, req: any): Promise<{
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string;
-        workspaceId: string;
         title: string;
         isArchived: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        workspaceId: string;
+        createdById: string;
     }>;
     one(id: string, req: any): Promise<{
+        labels: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            name: string;
+            boardId: string;
+            color: string;
+        }[];
         members: ({
             user: {
                 id: string;
-                email: string;
-                name: string | null;
                 createdAt: Date;
                 updatedAt: Date;
+                name: string | null;
+                email: string;
             };
         } & {
             id: string;
+            boardId: string;
             userId: string;
             role: import("@prisma/client").$Enums.BoardRole;
-            boardId: string;
         })[];
-        labels: {
-            id: string;
-            name: string;
-            boardId: string;
-            color: string | null;
-        }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
-        createdById: string;
-        workspaceId: string;
         title: string;
         isArchived: boolean;
+        createdAt: Date;
+        updatedAt: Date;
+        workspaceId: string;
+        createdById: string;
     }>;
     getMembers(id: string, req: any): Promise<{
         id: string;
@@ -58,7 +60,6 @@ export declare class BoardsController {
         name: string;
         email: string;
         role: import("@prisma/client").$Enums.BoardRole;
-        avatar: any;
     }[]>;
     inviteMember(id: string, dto: InviteMemberDto, req: any): Promise<{
         id: string;
