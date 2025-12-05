@@ -76,7 +76,6 @@ let BoardsService = class BoardsService {
             name: member.user.name,
             email: member.user.email,
             role: member.role,
-            avatar: null,
         }));
     }
     async inviteMember(userId, boardId, dto) {

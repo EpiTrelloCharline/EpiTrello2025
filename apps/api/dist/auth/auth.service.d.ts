@@ -3,14 +3,14 @@ export declare class AuthService {
     private prisma;
     constructor(prisma: PrismaService);
     register(email: string, password: string, name?: string): Promise<{
-        accessToken: string;
+        accessToken: any;
         user: {
             id: string;
             email: string;
         };
     }>;
-    login(email: string, password: string): Promise<{
-        accessToken: string;
+    login(email: string): Promise<{
+        accessToken: any;
         user: {
             id: string;
             email: string;

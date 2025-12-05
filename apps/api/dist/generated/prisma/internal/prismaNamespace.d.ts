@@ -4,23 +4,23 @@ import { type PrismaClient } from "./class";
 export type * from '../models';
 export type DMMF = typeof runtime.DMMF;
 export type PrismaPromise<T> = runtime.Types.Public.PrismaPromise<T>;
-export declare const PrismaClientKnownRequestError: typeof runtime.PrismaClientKnownRequestError;
+export declare const PrismaClientKnownRequestError: any;
 export type PrismaClientKnownRequestError = runtime.PrismaClientKnownRequestError;
-export declare const PrismaClientUnknownRequestError: typeof runtime.PrismaClientUnknownRequestError;
+export declare const PrismaClientUnknownRequestError: any;
 export type PrismaClientUnknownRequestError = runtime.PrismaClientUnknownRequestError;
-export declare const PrismaClientRustPanicError: typeof runtime.PrismaClientRustPanicError;
+export declare const PrismaClientRustPanicError: any;
 export type PrismaClientRustPanicError = runtime.PrismaClientRustPanicError;
-export declare const PrismaClientInitializationError: typeof runtime.PrismaClientInitializationError;
+export declare const PrismaClientInitializationError: any;
 export type PrismaClientInitializationError = runtime.PrismaClientInitializationError;
-export declare const PrismaClientValidationError: typeof runtime.PrismaClientValidationError;
+export declare const PrismaClientValidationError: any;
 export type PrismaClientValidationError = runtime.PrismaClientValidationError;
-export declare const sql: typeof runtime.sqltag;
-export declare const empty: runtime.Sql;
-export declare const join: typeof runtime.join;
-export declare const raw: typeof runtime.raw;
-export declare const Sql: typeof runtime.Sql;
+export declare const sql: any;
+export declare const empty: any;
+export declare const join: any;
+export declare const raw: any;
+export declare const Sql: any;
 export type Sql = runtime.Sql;
-export declare const Decimal: typeof runtime.Decimal;
+export declare const Decimal: any;
 export type Decimal = runtime.Decimal;
 export type DecimalJsLike = runtime.DecimalJsLike;
 export type Metrics = runtime.Metrics;
@@ -28,7 +28,7 @@ export type Metric<T> = runtime.Metric<T>;
 export type MetricHistogram = runtime.MetricHistogram;
 export type MetricHistogramBucket = runtime.MetricHistogramBucket;
 export type Extension = runtime.Types.Extensions.UserArgs;
-export declare const getExtensionContext: typeof runtime.Extensions.getExtensionContext;
+export declare const getExtensionContext: any;
 export type Args<T, F extends runtime.Operation> = runtime.Types.Public.Args<T, F>;
 export type Payload<T, F extends runtime.Operation = never> = runtime.Types.Public.Payload<T, F>;
 export type Result<T, A, F extends runtime.Operation> = runtime.Types.Public.Result<T, A, F>;
@@ -50,21 +50,9 @@ export declare const NullTypes: {
     JsonNull: (new (secret: never) => typeof runtime.objectEnumValues.instances.JsonNull);
     AnyNull: (new (secret: never) => typeof runtime.objectEnumValues.instances.AnyNull);
 };
-export declare const DbNull: {
-    _getNamespace(): string;
-    _getName(): string;
-    toString(): string;
-};
-export declare const JsonNull: {
-    _getNamespace(): string;
-    _getName(): string;
-    toString(): string;
-};
-export declare const AnyNull: {
-    _getNamespace(): string;
-    _getName(): string;
-    toString(): string;
-};
+export declare const DbNull: any;
+export declare const JsonNull: any;
+export declare const AnyNull: any;
 type SelectAndInclude = {
     select: any;
     include: any;
@@ -663,12 +651,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         };
     };
 };
-export declare const TransactionIsolationLevel: {
-    readonly ReadUncommitted: "ReadUncommitted";
-    readonly ReadCommitted: "ReadCommitted";
-    readonly RepeatableRead: "RepeatableRead";
-    readonly Serializable: "Serializable";
-};
+export declare const TransactionIsolationLevel: any;
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel];
 export declare const UserScalarFieldEnum: {
     readonly id: "id";
