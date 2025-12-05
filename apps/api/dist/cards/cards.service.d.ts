@@ -8,24 +8,52 @@ export declare class CardsService {
     constructor(prisma: PrismaService);
     private assertBoardMember;
     private assertCardAccess;
-    list(userId: string, listId: string): Promise<{
+    list(userId: string, listId: string): Promise<({
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
-        isArchived: boolean;
         position: Decimal;
+        isArchived: boolean;
         listId: string;
-    }[]>;
+    })[]>;
     create(userId: string, dto: CreateCardDto): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
-        isArchived: boolean;
         position: Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
     move(userId: string, dto: MoveCardDto): Promise<{
@@ -34,28 +62,56 @@ export declare class CardsService {
         updatedAt: Date;
         description: string | null;
         title: string;
-        isArchived: boolean;
         position: Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
     update(userId: string, cardId: string, dto: UpdateCardDto): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
-        isArchived: boolean;
         position: Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
     archive(userId: string, cardId: string): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
-        isArchived: boolean;
         position: Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
 }

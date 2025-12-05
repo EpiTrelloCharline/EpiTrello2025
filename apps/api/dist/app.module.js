@@ -14,10 +14,7 @@ const workspaces_module_1 = require("./workspaces/workspaces.module");
 const boards_module_1 = require("./boards/boards.module");
 const lists_module_1 = require("./lists/lists.module");
 const cards_module_1 = require("./cards/cards.module");
-<<<<<<< HEAD
 const labels_module_1 = require("./labels/labels.module");
-=======
->>>>>>> origin/develop
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,10 +30,7 @@ exports.AppModule = AppModule = __decorate([
             boards_module_1.BoardsModule,
             lists_module_1.ListsModule,
             cards_module_1.CardsModule,
-<<<<<<< HEAD
             labels_module_1.LabelsModule,
-=======
->>>>>>> origin/develop
         ],
     })
 ], AppModule);

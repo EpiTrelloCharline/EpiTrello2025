@@ -22,8 +22,6 @@ export declare class BoardsService {
         isArchived: boolean;
     }>;
     getOne(userId: string, boardId: string): Promise<{
-<<<<<<< HEAD
-=======
         members: ({
             user: {
                 id: string;
@@ -41,11 +39,12 @@ export declare class BoardsService {
         labels: {
             id: string;
             name: string;
+            createdAt: Date;
+            updatedAt: Date;
             boardId: string;
-            color: string | null;
+            color: string;
         }[];
     } & {
->>>>>>> origin/develop
         id: string;
         createdAt: Date;
         updatedAt: Date;

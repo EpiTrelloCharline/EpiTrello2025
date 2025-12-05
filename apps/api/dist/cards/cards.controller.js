@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CardsController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
+const board_read_guard_1 = require("../boards/guards/board-read.guard");
+const board_write_guard_1 = require("../boards/guards/board-write.guard");
 const cards_service_1 = require("./cards.service");
 const create_card_dto_1 = require("./dto/create-card.dto");
 const move_card_dto_1 = require("./dto/move-card.dto");
@@ -41,6 +43,7 @@ let CardsController = class CardsController {
 };
 exports.CardsController = CardsController;
 __decorate([
+    (0, common_1.UseGuards)(board_read_guard_1.BoardReadGuard),
     (0, common_1.Get)(),
     __param(0, (0, common_1.Query)('listId')),
     __param(1, (0, common_1.Request)()),
@@ -49,6 +52,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], CardsController.prototype, "list", null);
 __decorate([
+    (0, common_1.UseGuards)(board_write_guard_1.BoardWriteGuard),
     (0, common_1.Post)(),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
@@ -57,6 +61,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], CardsController.prototype, "create", null);
 __decorate([
+    (0, common_1.UseGuards)(board_write_guard_1.BoardWriteGuard),
     (0, common_1.Post)('move'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
@@ -65,6 +70,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], CardsController.prototype, "move", null);
 __decorate([
+    (0, common_1.UseGuards)(board_write_guard_1.BoardWriteGuard),
     (0, common_1.Patch)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -74,6 +80,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], CardsController.prototype, "update", null);
 __decorate([
+    (0, common_1.UseGuards)(board_write_guard_1.BoardWriteGuard),
     (0, common_1.Delete)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),

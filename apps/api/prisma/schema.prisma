@@ -112,8 +112,8 @@ model Card {
   updatedAt   DateTime @updatedAt
 
   list        List     @relation(fields: [listId], references: [id], onDelete: Cascade)
-<<<<<<< HEAD
   labels      CardLabel[]
+  members     User[]
 }
 
 model Label {
@@ -142,19 +142,5 @@ model CardLabel {
   @@unique([cardId, labelId])
   @@index([cardId])
   @@index([labelId])
-=======
-  
-  labels      Label[]
-  members     User[]
-}
-
-model Label {
-  id      String @id @default(cuid())
-  boardId String
-  name    String
-  color   String?
-  board   Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  cards   Card[]
->>>>>>> origin/develop
 }
 

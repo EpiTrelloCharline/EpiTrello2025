@@ -58,6 +58,10 @@ let CardsService = class CardsService {
                 isArchived: false,
             },
             orderBy: { position: 'asc' },
+            include: {
+                labels: true,
+                members: true,
+            },
         });
     }
     async create(userId, dto) {
@@ -73,6 +77,10 @@ let CardsService = class CardsService {
                 description: dto.description,
                 listId: dto.listId,
                 position: position,
+            },
+            include: {
+                labels: true,
+                members: true,
             },
         });
     }
@@ -105,6 +113,10 @@ let CardsService = class CardsService {
                 listId: targetListId,
                 position: newPosition,
             },
+            include: {
+                labels: true,
+                members: true,
+            },
         });
     }
     async update(userId, cardId, dto) {
@@ -121,6 +133,10 @@ let CardsService = class CardsService {
                 position: dto.position ? Number(dto.position) : undefined,
                 isArchived: dto.isArchived,
             },
+            include: {
+                labels: true,
+                members: true,
+            },
         });
     }
     async archive(userId, cardId) {
@@ -129,6 +145,10 @@ let CardsService = class CardsService {
             where: { id: cardId },
             data: {
                 isArchived: true,
+            },
+            include: {
+                labels: true,
+                members: true,
             },
         });
     }
