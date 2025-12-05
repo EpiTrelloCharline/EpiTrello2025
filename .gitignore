@@ -1,14 +1,26 @@
 # Dependencies
 node_modules/
 
-# Next.js
+# Build output
+.next/
+dist/
 apps/web/.next/
-
-# NestJS
 apps/api/dist/
+dist/
 
 # Environment variables
 .env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
 
 # TypeScript
 next-env.d.ts
+*.tsbuildinfo
+
+# Test environment
+.env.test
