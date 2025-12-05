@@ -15,17 +15,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-<<<<<<< HEAD
 import { api, getCardsByList, createCard, moveCard, updateCard, getLabelsByBoard } from '@/lib/api';
-import { DraggableCard } from './DraggableCard';
-import { CardDetailModal } from './CardDetailModal';
-import { LabelsManagementModal } from './LabelsManagementModal';
-
-type List = { id: string; title: string; position: number };
-type Card = { id: string; listId: string; title: string; position: string };
-type Label = { id: string; boardId: string; name: string; color: string };
-=======
-import { api, getCardsByList, createCard, moveCard, updateCard } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardMembers } from './BoardMembers';
@@ -39,9 +29,7 @@ type Card = {
   title: string;
   position: string;
   labels?: Label[];
-  members?: Member[]; // Note: members on card are User[] in schema, but we might get them as User objects. Let's check api response.
-  // Actually, schema says members User[]. So card.members will be User objects.
-  // But board.members are BoardMember[].
+  members?: any[]; // User objects
 };
 type User = { id: string; name: string | null; email: string };
 
@@ -52,7 +40,6 @@ type Board = {
   labels: Label[];
   members: Member[];
 };
->>>>>>> origin/develop
 
 export default function BoardPage() {
   const params = useParams<{ id: string }>();
@@ -62,20 +49,14 @@ export default function BoardPage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [previousCardsByList, setPreviousCardsByList] = useState<Record<string, Card[]>>({});
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-<<<<<<< HEAD
   const [labels, setLabels] = useState<Label[]>([]);
-  const [showLabelsModal, setShowLabelsModal] = useState(false);
   const [labelsRefreshTrigger, setLabelsRefreshTrigger] = useState(0);
-=======
 
-  // Search & Filter State
+  // Search State
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
 
-  const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0;
->>>>>>> origin/develop
+  const isFiltering = searchTerm.trim() !== "";
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   const sensors = useSensors(
@@ -86,11 +67,6 @@ export default function BoardPage() {
     })
   );
 
-<<<<<<< HEAD
-  useEffect(() => {
-    if (!token || !params?.id) return;
-
-=======
   const fetchBoardData = () => {
     if (!token || !params?.id) return;
 
@@ -103,7 +79,6 @@ export default function BoardPage() {
       .then(data => setBoard(data))
       .catch(console.error);
 
->>>>>>> origin/develop
     api(`/lists?boardId=${params.id}`)
       .then(r => {
         if (!r.ok) throw new Error('Failed to fetch lists');
@@ -120,10 +95,13 @@ export default function BoardPage() {
         console.error(err);
         setLists([]);
       });
-<<<<<<< HEAD
 
     // Load board labels
     loadLabels();
+  };
+
+  useEffect(() => {
+    fetchBoardData();
   }, [token, params?.id]);
 
   const loadLabels = async () => {
@@ -138,18 +116,6 @@ export default function BoardPage() {
 
   useEffect(() => {
     async function loadCards() {
-      if (lists.length === 0) return;
-      
-=======
-  };
-
-  useEffect(() => {
-    fetchBoardData();
-  }, [token, params?.id]);
-
-  useEffect(() => {
-    async function loadCards() {
->>>>>>> origin/develop
       const results = await Promise.all(
         lists.map(async (list) => {
           let cards: Card[] = [];
@@ -189,64 +155,11 @@ export default function BoardPage() {
     setTitle('');
   }
 
-<<<<<<< HEAD
-  // Helper: Find card location in state
-  function findCardLocation(
-    cardId: string,
-    state: Record<string, Card[]>
-  ): { listId: string; index: number } | null {
-    for (const [listId, cards] of Object.entries(state)) {
-      const index = cards.findIndex((c) => c.id === cardId);
-      if (index !== -1) {
-        return { listId, index };
-      }
-    }
-    return null;
-  }
-
-  // Helper: Compute new position based on surrounding cards
-  function computeNewPosition(cards: Card[], index: number): number {
-    if (cards.length === 0) return 1;
-    if (index === 0) {
-      // Before first card
-      const firstPos = parseFloat(cards[0].position);
-      return firstPos - 1;
-    }
-    if (index >= cards.length) {
-      // After last card
-      const lastPos = parseFloat(cards[cards.length - 1].position);
-      return lastPos + 1;
-    }
-    // Between two cards
-    const prevPos = parseFloat(cards[index - 1].position);
-    const nextPos = parseFloat(cards[index].position);
-    return (prevPos + nextPos) / 2;
-  }
-
-  // Unified drag handler for both lists and cards
-  function handleDragStart(event: DragStartEvent) {
-    const draggedId = event.active.id as string;
-
-=======
-  function cardMatchesFilters(card: Card) {
+  function cardMatchesSearch(card: Card) {
     if (searchTerm.trim() !== "") {
       const text = searchTerm.trim().toLowerCase();
       if (!card.title.toLowerCase().includes(text)) return false;
     }
-
-    if (selectedLabelIds.length > 0) {
-      const cardLabelIds = card.labels?.map(l => l.id) ?? [];
-      const hasLabel = selectedLabelIds.some(id => cardLabelIds.includes(id));
-      if (!hasLabel) return false;
-    }
-
-    if (selectedMemberIds.length > 0) {
-      // card.members are Users, so we check their IDs
-      const cardMemberIds = card.members?.map(m => m.id) ?? [];
-      const hasMember = selectedMemberIds.some(id => cardMemberIds.includes(id));
-      if (!hasMember) return false;
-    }
-
     return true;
   }
 
@@ -254,10 +167,10 @@ export default function BoardPage() {
     return Object.fromEntries(
       Object.entries(cardsByList).map(([listId, cards]) => [
         listId,
-        cards.filter(card => cardMatchesFilters(card)),
+        cards.filter(card => cardMatchesSearch(card)),
       ])
     );
-  }, [cardsByList, searchTerm, selectedLabelIds, selectedMemberIds]);
+  }, [cardsByList, searchTerm]);
 
   // Helper: Find card location in state
   function findCardLocation(
@@ -296,7 +209,6 @@ export default function BoardPage() {
   function handleDragStart(event: DragStartEvent) {
     const draggedId = event.active.id as string;
 
->>>>>>> origin/develop
     // Check if it's a card
     const cardLocation = findCardLocation(draggedId, cardsByList);
     if (cardLocation) {
@@ -307,11 +219,8 @@ export default function BoardPage() {
   }
 
   async function handleDragEnd(event: DragEndEvent) {
-<<<<<<< HEAD
-=======
     if (isFiltering) return; // Disable drag when filtering
 
->>>>>>> origin/develop
     const { active, over } = event;
     if (!over) return;
 
@@ -449,23 +358,11 @@ export default function BoardPage() {
   async function handleSaveCardDetails(data: { title: string; description: string }) {
     if (!selectedCard) return;
 
-<<<<<<< HEAD
-    const cardLocation = findCardLocation(selectedCard.id, cardsByList);
-    if (!cardLocation) return;
-
-    const { listId } = cardLocation;
-
-=======
->>>>>>> origin/develop
     // Optimistic update
     setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
     setCardsByList(prev => ({
       ...prev,
-<<<<<<< HEAD
-      [listId]: (prev[listId] || []).map(c =>
-=======
       [selectedCard.listId]: prev[selectedCard.listId].map(c =>
->>>>>>> origin/develop
         c.id === selectedCard.id ? { ...c, ...data } : c
       )
     }));
@@ -483,16 +380,6 @@ export default function BoardPage() {
   return (
     <div className="h-screen flex flex-col bg-[#0079bf]">
       {/* Header du board */}
-<<<<<<< HEAD
-      <div className="h-12 bg-black/20 backdrop-blur-sm flex items-center justify-between px-4 text-white font-bold">
-        <span>Epi Trello</span>
-        <button
-          className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded text-sm transition-colors"
-          onClick={() => setShowLabelsModal(true)}
-        >
-          ⚡ Labels
-        </button>
-=======
       <div className="h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 text-white gap-4">
         <div className="font-bold text-lg">Epi Trello</div>
 
@@ -515,81 +402,16 @@ export default function BoardPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-          {/* Label Filter */}
-          {board?.labels && board.labels.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium opacity-80">Labels:</span>
-              <div className="flex flex-wrap gap-1">
-                {board.labels.map(label => {
-                  const isSelected = selectedLabelIds.includes(label.id);
-                  return (
-                    <button
-                      key={label.id}
-                      onClick={() => {
-                        setSelectedLabelIds(prev =>
-                          isSelected ? prev.filter(id => id !== label.id) : [...prev, label.id]
-                        );
-                      }}
-                      className={`px-2 py-0.5 rounded text-xs font-semibold transition-all border ${isSelected
-                          ? 'border-white ring-2 ring-white/50 scale-105'
-                          : 'border-transparent opacity-80 hover:opacity-100'
-                        }`}
-                      style={{ backgroundColor: label.color || '#61bd4f', color: 'white' }}
-                    >
-                      {label.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Member Filter */}
-          {board?.members && board.members.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium opacity-80">Membres:</span>
-              <div className="flex -space-x-2 overflow-hidden p-1">
-                {board.members.map(member => {
-                  const isSelected = selectedMemberIds.includes(member.userId);
-                  return (
-                    <button
-                      key={member.id}
-                      onClick={() => {
-                        setSelectedMemberIds(prev =>
-                          isSelected ? prev.filter(id => id !== member.userId) : [...prev, member.userId]
-                        );
-                      }}
-                      className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-transform ${isSelected ? 'border-blue-400 z-10 scale-110' : 'border-transparent hover:z-10 hover:scale-105'
-                        }`}
-                      style={{ backgroundColor: '#dfe1e6', color: '#172b4d' }}
-                      title={member.user.name || member.user.email}
-                    >
-                      {member.user.name ? member.user.name[0].toUpperCase() : member.user.email[0].toUpperCase()}
-                      {isSelected && (
-                        <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full w-3 h-3 border border-white"></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Clear Filters */}
-          {isFiltering && (
+          {/* Clear Search */}
+          {searchTerm.trim() !== "" && (
             <button
-              onClick={() => {
-                setSearchTerm("");
-                setSelectedLabelIds([]);
-                setSelectedMemberIds([]);
-              }}
+              onClick={() => setSearchTerm("")}
               className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-white transition-colors"
             >
-              Effacer filtres
+              ✕ Effacer
             </button>
           )}
         </div>
->>>>>>> origin/develop
       </div>
 
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
@@ -605,20 +427,13 @@ export default function BoardPage() {
                   key={l.id}
                   id={l.id}
                   title={l.title}
-<<<<<<< HEAD
-                  cards={cardsByList[l.id] ?? []}
-=======
                   cards={filteredCardsByList[l.id] ?? []}
->>>>>>> origin/develop
                   setCardsByList={setCardsByList}
                   onDeleteCard={handleDeleteCard}
                   onUpdateCard={handleUpdateCard}
                   onCardClick={setSelectedCard}
-<<<<<<< HEAD
                   labelsRefreshTrigger={labelsRefreshTrigger}
-=======
                   isDragDisabled={isFiltering}
->>>>>>> origin/develop
                 />
               ))}
             </SortableContext>
@@ -656,32 +471,14 @@ export default function BoardPage() {
         </DndContext>
       </div>
 
-<<<<<<< HEAD
       {selectedCard && params?.id && (
         <CardDetailModal
           card={selectedCard}
           boardId={params.id}
-          availableLabels={labels}
+          availableLabels={(Array.isArray(labels) ? labels : []).map(l => ({ ...l, boardId: params.id }))}
           onClose={() => setSelectedCard(null)}
           onSave={handleSaveCardDetails}
           onLabelsChange={() => setLabelsRefreshTrigger(Date.now())}
-        />
-      )}
-
-      {showLabelsModal && params?.id && (
-        <LabelsManagementModal
-          boardId={params.id}
-          onClose={() => {
-            setShowLabelsModal(false);
-            loadLabels(); // Refresh labels when modal closes
-          }}
-=======
-      {selectedCard && (
-        <CardDetailModal
-          card={selectedCard}
-          onClose={() => setSelectedCard(null)}
-          onSave={handleSaveCardDetails}
->>>>>>> origin/develop
         />
       )}
     </div>
@@ -689,11 +486,7 @@ export default function BoardPage() {
 }
 
 // ——— Composant colonne sortable ———
-<<<<<<< HEAD
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, labelsRefreshTrigger }: {
-=======
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, isDragDisabled }: {
->>>>>>> origin/develop
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, labelsRefreshTrigger, isDragDisabled }: {
   id: string;
   title: string;
   cards: Card[];
@@ -701,11 +494,8 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   onDeleteCard: (cardId: string) => void;
   onUpdateCard: (cardId: string, data: { title?: string }) => void;
   onCardClick: (card: Card) => void;
-<<<<<<< HEAD
   labelsRefreshTrigger?: number;
-=======
   isDragDisabled: boolean;
->>>>>>> origin/develop
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const { setNodeRef: setDroppableRef } = useDroppable({ id: `list-${id}` });
@@ -739,29 +529,15 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
 
     try {
       const created = await createCard(id, title);
-<<<<<<< HEAD
-      console.log('Card created from API:', created);
-=======
->>>>>>> origin/develop
 
       // Remplacer la temp par la vraie carte
       setCardsByList((prev) => {
         const currentCards = Array.isArray(prev[id]) ? prev[id] : [];
-<<<<<<< HEAD
-        const updatedCards = currentCards.map((c) =>
-          c.id === tempId ? { ...created, title: created.title || title } : c
-        );
-        console.log('Updated cards:', updatedCards);
-        return {
-          ...prev,
-          [id]: updatedCards,
-=======
         return {
           ...prev,
           [id]: currentCards.map((c) =>
             c.id === tempId ? created : c
           ),
->>>>>>> origin/develop
         };
       });
     } catch (e) {
@@ -794,11 +570,8 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
               onDelete={onDeleteCard}
               onUpdate={onUpdateCard}
               onClick={() => onCardClick(card)}
-<<<<<<< HEAD
               refreshTrigger={labelsRefreshTrigger}
-=======
               isDragDisabled={isDragDisabled}
->>>>>>> origin/develop
             />
           ))}
         </SortableContext>

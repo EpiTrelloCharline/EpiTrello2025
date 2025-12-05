@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { getLabelsByBoard } from '@/lib/api';
+import { getLabelsByBoard, createLabel, updateLabel, deleteLabel } from '@/lib/api';
 
 type Label = {
     id: string;
@@ -41,9 +41,11 @@ export function LabelsManagementModal({ boardId, onClose }: LabelsManagementModa
     const loadLabels = async () => {
         try {
             const labels = await getLabelsByBoard(boardId);
-            setLocalLabels(labels);
+            // Ensure labels is an array
+            setLocalLabels(Array.isArray(labels) ? labels : []);
         } catch (error) {
             console.error('Failed to load labels:', error);
+            setLocalLabels([]); // In case of error, set an empty array
         }
     };
 
@@ -56,26 +58,22 @@ export function LabelsManagementModal({ boardId, onClose }: LabelsManagementModa
     }, [onClose]);
 
     const handleCreate = async () => {
-        if (!newLabel.name.trim()) return;
+        if (!newLabel.name.trim()) {
+            console.log('Label name is empty');
+            return;
+        }
+
+        console.log('Creating label:', { boardId, name: newLabel.name, color: newLabel.color });
 
         try {
-            const response = await fetch('http://localhost:3001/labels', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-                },
-                body: JSON.stringify({ ...newLabel, boardId }),
-            });
-
-            if (response.ok) {
-                const created = await response.json();
-                setLocalLabels([...localLabels, created]);
-                setNewLabel({ name: '', color: '#61bd4f' });
-                setIsCreating(false);
-            }
+            const created = await createLabel(boardId, newLabel.name, newLabel.color);
+            console.log('Label created successfully:', created);
+            setLocalLabels([...(Array.isArray(localLabels) ? localLabels : []), created]);
+            setNewLabel({ name: '', color: '#61bd4f' });
+            setIsCreating(false);
         } catch (error) {
             console.error('Failed to create label:', error);
+            alert('Erreur lors de la création de l\'étiquette. Vérifiez la console pour plus de détails.');
         }
     };
 
@@ -83,20 +81,9 @@ export function LabelsManagementModal({ boardId, onClose }: LabelsManagementModa
         if (!editLabel.name.trim()) return;
 
         try {
-            const response = await fetch(`http://localhost:3001/labels/${labelId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-                },
-                body: JSON.stringify(editLabel),
-            });
-
-            if (response.ok) {
-                const updated = await response.json();
-                setLocalLabels(localLabels.map(l => l.id === labelId ? updated : l));
-                setEditingId(null);
-            }
+            const updated = await updateLabel(labelId, editLabel);
+            setLocalLabels((Array.isArray(localLabels) ? localLabels : []).map(l => l.id === labelId ? updated : l));
+            setEditingId(null);
         } catch (error) {
             console.error('Failed to update label:', error);
         }
@@ -106,16 +93,8 @@ export function LabelsManagementModal({ boardId, onClose }: LabelsManagementModa
         if (!confirm('Êtes-vous sûr de vouloir supprimer cette étiquette ?')) return;
 
         try {
-            const response = await fetch(`http://localhost:3001/labels/${labelId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-                },
-            });
-
-            if (response.ok) {
-                setLocalLabels(localLabels.filter(l => l.id !== labelId));
-            }
+            await deleteLabel(labelId);
+            setLocalLabels((Array.isArray(localLabels) ? localLabels : []).filter(l => l.id !== labelId));
         } catch (error) {
             console.error('Failed to delete label:', error);
         }
@@ -149,7 +128,7 @@ export function LabelsManagementModal({ boardId, onClose }: LabelsManagementModa
                 <div className="p-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
                     {/* Labels List */}
                     <div className="space-y-2 mb-4">
-                        {localLabels.map((label) => (
+                        {(Array.isArray(localLabels) ? localLabels : []).map((label) => (
                             <div key={label.id}>
                                 {editingId === label.id ? (
                                     <div className="space-y-2">

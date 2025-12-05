@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { getCardLabels, assignLabel, unassignLabel } from '@/lib/api';
+import { getCardLabels, assignLabel, unassignLabel, createLabel, getLabelsByBoard } from '@/lib/api';
 
 type Card = {
     id: string;
@@ -27,11 +27,28 @@ type CardDetailModalProps = {
     onLabelsChange?: () => void;
 };
 
+const PRESET_COLORS = [
+    '#61bd4f', // green
+    '#f2d600', // yellow
+    '#ff9f1a', // orange
+    '#eb5a46', // red
+    '#c377e0', // purple
+    '#0079bf', // blue
+    '#00c2e0', // sky
+    '#51e898', // lime
+    '#ff78cb', // pink
+    '#344563', // dark gray
+];
+
 export function CardDetailModal({ card, boardId, availableLabels, onClose, onSave, onLabelsChange }: CardDetailModalProps) {
     const [title, setTitle] = useState(card.title);
     const [description, setDescription] = useState(card.description || '');
     const [cardLabels, setCardLabels] = useState<Label[]>([]); 
-    const [showLabelPicker, setShowLabelPicker] = useState(false); 
+    const [showLabelPicker, setShowLabelPicker] = useState(false);
+    const [allLabels, setAllLabels] = useState<Label[]>(availableLabels);
+    const [isCreatingLabel, setIsCreatingLabel] = useState(false);
+    const [newLabelName, setNewLabelName] = useState('');
+    const [newLabelColor, setNewLabelColor] = useState('#61bd4f'); 
 
 
     useEffect(() => {
@@ -43,15 +60,47 @@ export function CardDetailModal({ card, boardId, availableLabels, onClose, onSav
     }, [onClose]);
 
     useEffect(() => { 
-        loadCardLabels(); 
+        loadCardLabels();
+        loadAllLabels();
     }, [card.id]);
 
     const loadCardLabels = async () => { 
         try { 
             const labels = await getCardLabels(card.id);
-            setCardLabels(labels); 
+            // Ensure labels is an array
+            setCardLabels(Array.isArray(labels) ? labels : []); 
         } catch (error) {
             console.error('Failed to load card labels:', error);
+            setCardLabels([]); // In case of error, set an empty array
+        }
+    };
+
+    const loadAllLabels = async () => {
+        try {
+            const labels = await getLabelsByBoard(boardId);
+            setAllLabels(Array.isArray(labels) ? labels : []);
+        } catch (error) {
+            console.error('Failed to load all labels:', error);
+            setAllLabels([]);
+        }
+    };
+
+    const handleCreateLabel = async () => {
+        if (!newLabelName.trim()) return;
+
+        try {
+            const created = await createLabel(boardId, newLabelName, newLabelColor);
+            setAllLabels([...allLabels, created]);
+            setNewLabelName('');
+            setNewLabelColor('#61bd4f');
+            setIsCreatingLabel(false);
+            // Notify parent to refresh
+            if (onLabelsChange) {
+                onLabelsChange();
+            }
+        } catch (error) {
+            console.error('Failed to create label:', error);
+            alert('Failed to create label. Please try again.');
         }
     };
 
@@ -66,15 +115,15 @@ export function CardDetailModal({ card, boardId, availableLabels, onClose, onSav
     };
 
     const handleToggleLabel = async (label: Label) => {
-        const isAssigned = cardLabels.some(l => l.id === label.id);
+        const isAssigned = (Array.isArray(cardLabels) ? cardLabels : []).some(l => l.id === label.id);
         
         try {
             if (isAssigned) {
                 await unassignLabel(label.id, card.id);
-                setCardLabels(cardLabels.filter(l => l.id !== label.id));
+                setCardLabels((Array.isArray(cardLabels) ? cardLabels : []).filter(l => l.id !== label.id));
             } else {
                 await assignLabel(label.id, card.id);
-                setCardLabels([...cardLabels, label]);
+                setCardLabels([...(Array.isArray(cardLabels) ? cardLabels : []), label]);
             }
             // Notify parent to refresh card labels display
             if (onLabelsChange) {
@@ -83,6 +132,13 @@ export function CardDetailModal({ card, boardId, availableLabels, onClose, onSav
         } catch (error) {
             console.error('Failed to toggle label:', error);
         }
+    };
+
+    const handleCloseLabelPicker = () => {
+        setShowLabelPicker(false);
+        setIsCreatingLabel(false);
+        setNewLabelName('');
+        setNewLabelColor('#61bd4f');
     };
 
     if (typeof document === 'undefined') return null;
@@ -121,11 +177,11 @@ export function CardDetailModal({ card, boardId, availableLabels, onClose, onSav
                         </div>
                         
                         {/* Labels Display */}
-                        {cardLabels.length > 0 && (
+                        {Array.isArray(cardLabels) && cardLabels.length > 0 && (
                             <div className="ml-9 mt-3">
                                 <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Étiquettes</h4>
                                 <div className="flex flex-wrap gap-1">
-                                    {cardLabels.map((label) => (
+                                    {(Array.isArray(cardLabels) ? cardLabels : []).map((label) => (
                                         <span
                                             key={label.id}
                                             className="px-3 py-1 rounded text-white text-xs font-medium"
@@ -193,33 +249,127 @@ export function CardDetailModal({ card, boardId, availableLabels, onClose, onSav
                                     onClick={() => setShowLabelPicker(!showLabelPicker)}
                                 />
                                 {showLabelPicker && (
-                                    <div className="absolute left-full top-0 ml-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 p-3 z-10">
-                                        <h4 className="font-semibold text-sm text-gray-800 mb-2">Étiquettes</h4>
-                                        <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
-                                            {availableLabels.map((label) => {
-                                                const isAssigned = cardLabels.some(l => l.id === label.id);
-                                                return (
-                                                    <button
-                                                        key={label.id}
-                                                        onClick={() => handleToggleLabel(label)}
-                                                        className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-50 transition-colors text-left"
-                                                    >
-                                                        <div
-                                                            className="flex-1 px-2 py-1 rounded text-white text-xs font-medium"
-                                                            style={{ backgroundColor: label.color }}
-                                                        >
-                                                            {label.name}
-                                                        </div>
-                                                        {isAssigned && (
-                                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                            </svg>
+                                    <div className="absolute right-full top-0 mr-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                                        {/* Header */}
+                                        <div className="border-b border-gray-200 p-3 flex items-center justify-between">
+                                            <h4 className="font-semibold text-sm text-gray-800">Labels</h4>
+                                            <button
+                                                onClick={handleCloseLabelPicker}
+                                                className="p-1 text-gray-500 hover:bg-gray-100 rounded transition-colors"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="p-3">
+                                            {!isCreatingLabel ? (
+                                                <>
+                                                    <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar mb-2">
+                                                        {(Array.isArray(allLabels) ? allLabels : []).map((label) => {
+                                                            const isAssigned = (Array.isArray(cardLabels) ? cardLabels : []).some(l => l.id === label.id);
+                                                            return (
+                                                                <button
+                                                                    key={label.id}
+                                                                    onClick={() => handleToggleLabel(label)}
+                                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded hover:bg-gray-50 transition-colors text-left"
+                                                                >
+                                                                    <div
+                                                                        className="flex-1 px-3 py-1.5 rounded text-white text-sm font-medium"
+                                                                        style={{ backgroundColor: label.color }}
+                                                                    >
+                                                                        {label.name}
+                                                                    </div>
+                                                                    {isAssigned && (
+                                                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                        </svg>
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                        {(!Array.isArray(allLabels) || allLabels.length === 0) && (
+                                                            <p className="text-sm text-gray-500 text-center py-4">No labels yet</p>
                                                         )}
+                                                    </div>
+
+                                                    {/* Create New Label Button */}
+                                                    <button
+                                                        onClick={() => setIsCreatingLabel(true)}
+                                                        className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm font-medium transition-colors"
+                                                    >
+                                                        + Create new label
                                                     </button>
-                                                );
-                                            })}
-                                            {availableLabels.length === 0 && (
-                                                <p className="text-sm text-gray-500 text-center py-2">Aucune étiquette disponible</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {/* Create Label Form */}
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Name</label>
+                                                            <input
+                                                                type="text"
+                                                                value={newLabelName}
+                                                                onChange={(e) => setNewLabelName(e.target.value)}
+                                                                placeholder="Label name..."
+                                                                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                                autoFocus
+                                                            />
+                                                        </div>
+
+                                                        <div>
+                                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Color</label>
+                                                            <div className="grid grid-cols-5 gap-2">
+                                                                {PRESET_COLORS.map((color) => (
+                                                                    <button
+                                                                        key={color}
+                                                                        onClick={() => setNewLabelColor(color)}
+                                                                        className={`h-8 rounded transition-all ${
+                                                                            newLabelColor === color 
+                                                                                ? 'ring-2 ring-blue-600 ring-offset-2 scale-110' 
+                                                                                : 'hover:scale-105'
+                                                                        }`}
+                                                                        style={{ backgroundColor: color }}
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Preview */}
+                                                        <div>
+                                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Preview</label>
+                                                            <div
+                                                                className="px-3 py-1.5 rounded text-white text-sm font-medium inline-block"
+                                                                style={{ backgroundColor: newLabelColor }}
+                                                            >
+                                                                {newLabelName || 'Label name'}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Actions */}
+                                                        <div className="flex gap-2 pt-2">
+                                                            <button
+                                                                onClick={handleCreateLabel}
+                                                                disabled={!newLabelName.trim()}
+                                                                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-sm transition-colors"
+                                                            >
+                                                                Create
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setIsCreatingLabel(false);
+                                                                    setNewLabelName('');
+                                                                    setNewLabelColor('#61bd4f');
+                                                                }}
+                                                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium text-sm transition-colors"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </>
                                             )}
                                         </div>
                                     </div>

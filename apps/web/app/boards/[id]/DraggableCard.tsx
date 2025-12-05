@@ -23,11 +23,11 @@ type DraggableCardProps = {
     onDelete: (cardId: string) => void;
     onUpdate: (cardId: string, data: { title?: string }) => void;
     onClick?: () => void;
-    refreshTrigger?: number; 
-
+    refreshTrigger?: number;
+    isDragDisabled?: boolean;
 };
 
-export function DraggableCard({ card, onDelete, onUpdate, onClick, refreshTrigger }: DraggableCardProps) {
+export function DraggableCard({ card, onDelete, onUpdate, onClick, refreshTrigger, isDragDisabled }: DraggableCardProps) {
     const {
         attributes,
         listeners,
@@ -35,7 +35,7 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick, refreshTrigge
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: card.id });
+    } = useSortable({ id: card.id, disabled: isDragDisabled });
 
     const [isEditing, setIsEditing] = useState(false);
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
@@ -60,9 +60,11 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick, refreshTrigge
         try {
             const cardLabels = await getCardLabels(card.id);
             console.log('DraggableCard: labels loaded', { cardId: card.id, labels: cardLabels });
-            setLabels(cardLabels);
+            // Ensure cardLabels is an array
+            setLabels(Array.isArray(cardLabels) ? cardLabels : []);
         } catch (error) {
             console.error('Failed to load labels:', error);
+            setLabels([]); // On error, set an empty array
         }
     };
 
@@ -109,9 +111,9 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick, refreshTrigge
                 onClick={onClick}
             >
                 {/* Labels badges */}
-                {labels.length > 0 && (
+                {Array.isArray(labels) && labels.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-1">
-                        {labels.map((label) => (
+                        {(Array.isArray(labels) ? labels : []).map((label) => (
                             <span
                                 key={label.id}
                                 className="h-2 w-10 rounded"

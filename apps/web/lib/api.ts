@@ -54,12 +54,13 @@ export async function updateCard(cardId: string, data: { title?: string; descrip
   });
   return res.json();
 }
-<<<<<<< HEAD
 
 // Labels API
 export async function getLabelsByBoard(boardId: string) {
   const res = await api(`/labels?boardId=${boardId}`);
-  return res.json();
+  const data = await res.json();
+  // Ensure we always return an array
+  return Array.isArray(data) ? data : [];
 }
 
 export async function createLabel(boardId: string, name: string, color: string) {
@@ -67,6 +68,13 @@ export async function createLabel(boardId: string, name: string, color: string) 
     method: 'POST',
     body: JSON.stringify({ boardId, name, color }),
   });
+
+  if (!res.ok) { 
+    const errorData = await res.json().catch(() => ({}));
+    console.error('Create label error:', res.status, errorData); 
+    throw new Error(errorData.message || `Failed to create label: ${res.status}`);
+  }
+  
   return res.json();
 }
 
@@ -101,7 +109,7 @@ export async function unassignLabel(labelId: string, cardId: string) {
 
 export async function getCardLabels(cardId: string) {
   const res = await api(`/labels/card/${cardId}`);
-  return res.json();
+  const data = await res.json();
+  // Ensure we always return an array
+  return Array.isArray(data) ? data : [];
 }
-=======
->>>>>>> origin/develop
