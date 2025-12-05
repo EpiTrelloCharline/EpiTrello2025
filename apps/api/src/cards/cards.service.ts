@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
-import { Decimal } from '@prisma/client/runtime/library';
+
 
 @Injectable()
 export class CardsService {

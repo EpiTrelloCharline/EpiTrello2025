@@ -107,16 +107,17 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
 
       setSuccess('Membre invité avec succès!');
       setEmail('');
-      
-      // Reload members after a short delay to show success message
+      setIsInviting(false);
+
+      // Rafraîchir la liste des membres après un court délai pour montrer le message de succès
       setTimeout(() => {
         onMemberAdded();
         setSuccess('');
       }, 1500);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Une erreur est survenue';
-      
-      // Error messages 
+
+      // Messages d'erreur plus conviviaux
       if (errorMessage.includes('not found') || errorMessage.includes('User not found')) {
         setError('Utilisateur non trouvé. Cet email n\'existe pas dans le système.');
       } else if (errorMessage.includes('already')) {
@@ -338,7 +339,7 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
                 <p>
-                  L'utilisateur doit déjà avoir un compte pour être invité au workspace et accéder au board.
+                  L&apos;utilisateur doit déjà avoir un compte pour être invité au workspace et accéder au board.
                 </p>
               </div>
             </div>
