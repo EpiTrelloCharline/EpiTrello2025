@@ -27,6 +27,25 @@ export class BoardsService {
 
     await this.prisma.boardMember.create({ data: { boardId: board.id, userId, role: 'OWNER' } });
 
+    // Create default labels for the new board
+    const defaultLabels = [
+      { name: 'facile', color: '#61bd4f' },
+      { name: 'en difficulté', color: '#ff9f1a' },
+      { name: 'Server-Client (langage C)', color: '#eb5a46' },
+      { name: 'Interface graphique (langage C)', color: '#c377e0' },
+      { name: 'long', color: '#0079bf' },
+      { name: 'bug', color: '#00c2e0' },
+      { name: 'Intelligence artificielle', color: '#61bd4f' },
+    ];
+
+    await this.prisma.label.createMany({
+      data: defaultLabels.map(label => ({
+        boardId: board.id,
+        name: label.name,
+        color: label.color,
+      })),
+    });
+
     return board;
   }
 
