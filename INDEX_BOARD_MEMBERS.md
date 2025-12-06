@@ -11,7 +11,6 @@ Cette documentation complète couvre l'implémentation de la fonctionnalité **B
 ### 1. **BOARD_MEMBERS_FEATURE.md** 🔧
 **Documentation technique détaillée**
 - Architecture des composants
-- Props et interfaces TypeScript
 - Flux de données
 - Gestion des erreurs
 - Intégration avec l'API backend
