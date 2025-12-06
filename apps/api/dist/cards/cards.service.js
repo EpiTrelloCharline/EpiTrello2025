@@ -59,7 +59,11 @@ let CardsService = class CardsService {
             },
             orderBy: { position: 'asc' },
             include: {
-                labels: true,
+                labels: {
+                    include: {
+                        label: true,
+                    },
+                },
                 members: true,
             },
         });
@@ -79,7 +83,11 @@ let CardsService = class CardsService {
                 position: position,
             },
             include: {
-                labels: true,
+                labels: {
+                    include: {
+                        label: true,
+                    },
+                },
                 members: true,
             },
         });
@@ -114,7 +122,11 @@ let CardsService = class CardsService {
                 position: newPosition,
             },
             include: {
-                labels: true,
+                labels: {
+                    include: {
+                        label: true,
+                    },
+                },
                 members: true,
             },
         });
@@ -134,7 +146,11 @@ let CardsService = class CardsService {
                 isArchived: dto.isArchived,
             },
             include: {
-                labels: true,
+                labels: {
+                    include: {
+                        label: true,
+                    },
+                },
                 members: true,
             },
         });
@@ -147,7 +163,11 @@ let CardsService = class CardsService {
                 isArchived: true,
             },
             include: {
-                labels: true,
+                labels: {
+                    include: {
+                        label: true,
+                    },
+                },
                 members: true,
             },
         });

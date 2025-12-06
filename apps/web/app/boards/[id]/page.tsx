@@ -23,17 +23,15 @@ import { BoardMembers } from './BoardMembers';
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; userId: string; role: string; user: { id: string; name: string | null; email: string } };
+type User = { id: string; name: string | null; email: string };
 type Card = {
   id: string;
   listId: string;
   title: string;
   position: string;
   labels?: Label[];
-  members?: Member[]; // Note: members on card are User[] in schema, but we might get them as User objects. Let's check api response.
-  // Actually, schema says members User[]. So card.members will be User objects.
-  // But board.members are BoardMember[].
+  members?: User[]; // Card members are User objects from the API
 };
-type User = { id: string; name: string | null; email: string };
 
 type Board = {
   id: string;

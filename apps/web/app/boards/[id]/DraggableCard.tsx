@@ -1,13 +1,22 @@
+'use client';
+
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState, useEffect, useRef, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CardLabelPicker } from './CardLabelPicker';
+import { CardMemberAvatars } from './CardMemberAvatars';
 
 type Label = {
     id: string;
     name: string;
     color: string;
+};
+
+type User = { 
+    id: string; 
+    name: string | null; 
+    email: string;
 };
 
 type Card = {
@@ -16,6 +25,7 @@ type Card = {
     title: string;
     position: any;
     labels?: Label[];
+    members?: User[];
 };
 
 type DraggableCardProps = {
@@ -107,6 +117,13 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                     </div>
                 )}
                 <span className="text-sm text-[#172b4d] block min-h-[1.5em] break-words">{card.title}</span>
+
+                {/* Member Avatars */} 
+                {card.members && card.members.length > 0 && (
+                    <div className="mt-2"> 
+                        <CardMemberAvatars members={card.members} /> 
+                    </div> 
+                )}
                 <button
                     className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-gray-500 z-10"
                     onPointerDown={(e) => e.stopPropagation()}

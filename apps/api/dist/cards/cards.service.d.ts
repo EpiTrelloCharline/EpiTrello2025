@@ -7,22 +7,70 @@ export declare class CardsService {
     constructor(prisma: PrismaService);
     private assertBoardMember;
     private assertCardAccess;
-    list(userId: string, listId: string): Promise<{
+    list(userId: string, listId: string): Promise<({
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
-    }[]>;
+    })[]>;
     create(userId: string, dto: CreateCardDto): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
     move(userId: string, dto: MoveCardDto): Promise<{
@@ -32,24 +80,73 @@ export declare class CardsService {
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
     update(userId: string, cardId: string, dto: UpdateCardDto): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
     archive(userId: string, cardId: string): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
 }

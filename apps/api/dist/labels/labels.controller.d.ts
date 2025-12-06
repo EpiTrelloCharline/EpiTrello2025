@@ -1,6 +1,7 @@
 import { LabelsService } from './labels.service';
 import { CreateLabelDto } from './dto/create-label.dto';
 import { UpdateLabelDto } from './dto/update-label.dto';
+import { AssignLabelDto } from './dto/assign-label.dto';
 export declare class LabelsController {
     private labelsService;
     constructor(labelsService: LabelsService);
@@ -29,6 +30,12 @@ export declare class LabelsController {
         color: string;
     }>;
     deleteLabel(labelId: string, req: any): Promise<{
+        message: string;
+    }>;
+    assignLabelToCard(cardId: string, dto: AssignLabelDto, req: any): Promise<{
+        message: string;
+    }>;
+    removeLabelFromCard(cardId: string, labelId: string, req: any): Promise<{
         message: string;
     }>;
 }
