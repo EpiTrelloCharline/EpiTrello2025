@@ -24,4 +24,9 @@ __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], CreateCardDto.prototype, "listId", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreateCardDto.prototype, "description", void 0);
 //# sourceMappingURL=create-card.dto.js.map

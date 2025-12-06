@@ -22,18 +22,46 @@ let CardsService = class CardsService {
             include: { board: { include: { members: true } } },
         });
         if (!list)
-            throw new common_1.ForbiddenException('List not found');
+            throw new common_1.NotFoundException('List not found');
         const isMember = list.board.members.some((m) => m.userId === userId);
         if (!isMember && list.board.createdById !== userId) {
             throw new common_1.ForbiddenException('Not a board member');
         }
         return list;
     }
+    async assertCardAccess(userId, cardId) {
+        const card = await this.prisma.card.findUnique({
+            where: { id: cardId },
+            include: {
+                list: {
+                    include: {
+                        board: {
+                            include: { members: true },
+                        },
+                    },
+                },
+            },
+        });
+        if (!card)
+            throw new common_1.NotFoundException('Card not found');
+        const isMember = card.list.board.members.some((m) => m.userId === userId);
+        if (!isMember && card.list.board.createdById !== userId) {
+            throw new common_1.ForbiddenException('Not a board member');
+        }
+        return card;
+    }
     async list(userId, listId) {
         await this.assertBoardMember(userId, listId);
         return this.prisma.card.findMany({
-            where: { listId },
+            where: {
+                listId,
+                isArchived: false,
+            },
             orderBy: { position: 'asc' },
+            include: {
+                labels: true,
+                members: true,
+            },
         });
     }
     async create(userId, dto) {
@@ -46,15 +74,20 @@ let CardsService = class CardsService {
         return this.prisma.card.create({
             data: {
                 title: dto.title,
+                description: dto.description,
                 listId: dto.listId,
                 position: position,
+            },
+            include: {
+                labels: true,
+                members: true,
             },
         });
     }
     async move(userId, dto) {
         const card = await this.prisma.card.findUnique({ where: { id: dto.cardId } });
         if (!card)
-            throw new common_1.ForbiddenException('Card not found');
+            throw new common_1.NotFoundException('Card not found');
         await this.assertBoardMember(userId, card.listId);
         if (dto.listId && dto.listId !== card.listId) {
             await this.assertBoardMember(userId, dto.listId);
@@ -79,6 +112,43 @@ let CardsService = class CardsService {
             data: {
                 listId: targetListId,
                 position: newPosition,
+            },
+            include: {
+                labels: true,
+                members: true,
+            },
+        });
+    }
+    async update(userId, cardId, dto) {
+        const card = await this.assertCardAccess(userId, cardId);
+        if (dto.listId && dto.listId !== card.listId) {
+            await this.assertBoardMember(userId, dto.listId);
+        }
+        return this.prisma.card.update({
+            where: { id: cardId },
+            data: {
+                title: dto.title,
+                description: dto.description,
+                listId: dto.listId,
+                position: dto.position ? Number(dto.position) : undefined,
+                isArchived: dto.isArchived,
+            },
+            include: {
+                labels: true,
+                members: true,
+            },
+        });
+    }
+    async archive(userId, cardId) {
+        await this.assertCardAccess(userId, cardId);
+        return this.prisma.card.update({
+            where: { id: cardId },
+            data: {
+                isArchived: true,
+            },
+            include: {
+                labels: true,
+                members: true,
             },
         });
     }
