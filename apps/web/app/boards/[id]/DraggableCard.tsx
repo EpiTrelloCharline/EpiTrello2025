@@ -1,24 +1,34 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
+import { CardLabelPicker } from './CardLabelPicker';
+
+type Label = {
+    id: string;
+    name: string;
+    color: string;
+};
 
 type Card = {
     id: string;
     listId: string;
     title: string;
     position: any;
+    labels?: Label[];
 };
 
 type DraggableCardProps = {
     card: Card;
+    boardId: string;
     onDelete: (cardId: string) => void;
     onUpdate: (cardId: string, data: { title?: string }) => void;
     onClick?: () => void;
     isDragDisabled?: boolean;
+    onLabelsUpdated?: () => void;
 };
 
-export function DraggableCard({ card, onDelete, onUpdate, onClick, isDragDisabled }: DraggableCardProps) {
+export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDragDisabled, onLabelsUpdated }: DraggableCardProps) {
     const {
         attributes,
         listeners,
@@ -30,9 +40,11 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick, isDragDisable
 
     const [isEditing, setIsEditing] = useState(false);
     const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+    const [showLabelPicker, setShowLabelPicker] = useState(false);
     const [editTitle, setEditTitle] = useState(card.title);
     const [editPos, setEditPos] = useState({ top: 0, left: 0, width: 0 });
     const cardRef = useRef<HTMLElement | null>(null);
+    const labelButtonRef = useRef<HTMLButtonElement | null>(null);
 
     // Reset title when card changes
     useEffect(() => {
@@ -81,6 +93,19 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick, isDragDisable
                 className="bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative"
                 onClick={onClick}
             >
+                {/* Labels - compact colored bars */}
+                {card.labels && card.labels.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                        {card.labels.map(label => (
+                            <div
+                                key={label.id}
+                                className="h-2 w-10 rounded-sm"
+                                style={{ backgroundColor: label.color }}
+                                title={label.name}
+                            />
+                        ))}
+                    </div>
+                )}
                 <span className="text-sm text-[#172b4d] block min-h-[1.5em] break-words">{card.title}</span>
                 <button
                     className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-gray-500 z-10"
@@ -90,6 +115,17 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick, isDragDisable
                     ✎
                 </button>
             </div>
+
+            {showLabelPicker && (
+                <CardLabelPicker
+                    cardId={card.id}
+                    boardId={boardId}
+                    currentLabels={card.labels || []}
+                    onClose={() => setShowLabelPicker(false)}
+                    onLabelsUpdated={onLabelsUpdated}
+                    anchorEl={labelButtonRef.current}
+                />
+            )}
 
             {isEditing && typeof document !== 'undefined' && createPortal(
                 <div className="fixed inset-0 z-[100] flex items-start justify-start">
@@ -176,7 +212,15 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick, isDragDisable
                                         onClick?.();
                                     }}
                                 />
-                                <SidebarButton icon={<path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z" />} label="Modifier les étiquettes" />
+                                <SidebarButton
+                                    ref={labelButtonRef}
+                                    icon={<path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z" />}
+                                    label="Modifier les étiquettes"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowLabelPicker(true);
+                                    }}
+                                />
                                 <SidebarButton icon={<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />} label="Modifier les membres" />
                                 <SidebarButton icon={<path d="M4 4h16v10h-16zM4 2c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-10c0-1.1-.9-2-2-2h-16z" />} label="Modifier la couverture" />
                                 <SidebarButton icon={<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />} label="Modifier les dates" />
@@ -201,16 +245,19 @@ export function DraggableCard({ card, onDelete, onUpdate, onClick, isDragDisable
     );
 }
 
-function SidebarButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: (e: React.MouseEvent) => void }) {
-    return (
-        <button
-            className="bg-black/60 text-white px-3 py-1.5 rounded hover:bg-black/80 text-left text-sm flex items-center gap-2 transition-colors backdrop-blur-sm whitespace-nowrap"
-            onClick={onClick}
-        >
-            <svg className="w-4 h-4 fill-current text-gray-300" viewBox="0 0 24 24">
-                {icon}
-            </svg>
-            <span>{label}</span>
-        </button>
-    );
-}
+const SidebarButton = forwardRef<HTMLButtonElement, { icon: React.ReactNode; label: string; onClick?: (e: React.MouseEvent) => void }>(
+    function SidebarButton({ icon, label, onClick }, ref) {
+        return (
+            <button
+                ref={ref}
+                className="bg-black/60 text-white px-3 py-1.5 rounded hover:bg-black/80 text-left text-sm flex items-center gap-2 transition-colors backdrop-blur-sm whitespace-nowrap"
+                onClick={onClick}
+            >
+                <svg className="w-4 h-4 fill-current text-gray-300" viewBox="0 0 24 24">
+                    {icon}
+                </svg>
+                <span>{label}</span>
+            </button>
+        );
+    }
+);

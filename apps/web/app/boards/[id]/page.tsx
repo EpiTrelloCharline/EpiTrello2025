@@ -111,7 +111,12 @@ export default function BoardPage() {
           try {
             const result = await getCardsByList(list.id);
             if (Array.isArray(result)) {
-              cards = result;
+              // Transform the label structure: API returns { labels: [{ label: {...} }] }
+              // but we need { labels: [{...}] }
+              cards = result.map(card => ({
+                ...card,
+                labels: card.labels?.map((cl: any) => cl.label) || []
+              }));
             }
           } catch (e) {
             console.error(`Failed to load cards for list ${list.id}`, e);
@@ -405,34 +410,7 @@ export default function BoardPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-          {/* Label Filter */}
-          {board?.labels && board.labels.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium opacity-80">Labels:</span>
-              <div className="flex flex-wrap gap-1">
-                {board.labels.map(label => {
-                  const isSelected = selectedLabelIds.includes(label.id);
-                  return (
-                    <button
-                      key={label.id}
-                      onClick={() => {
-                        setSelectedLabelIds(prev =>
-                          isSelected ? prev.filter(id => id !== label.id) : [...prev, label.id]
-                        );
-                      }}
-                      className={`px-2 py-0.5 rounded text-xs font-semibold transition-all border ${isSelected
-                          ? 'border-white ring-2 ring-white/50 scale-105'
-                          : 'border-transparent opacity-80 hover:opacity-100'
-                        }`}
-                      style={{ backgroundColor: label.color || '#61bd4f', color: 'white' }}
-                    >
-                      {label.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+
 
           {/* Member Filter */}
           {board?.members && board.members.length > 0 && (
@@ -500,6 +478,7 @@ export default function BoardPage() {
                   onUpdateCard={handleUpdateCard}
                   onCardClick={setSelectedCard}
                   isDragDisabled={isFiltering}
+                  boardId={params.id}
                 />
               ))}
             </SortableContext>
@@ -540,8 +519,22 @@ export default function BoardPage() {
       {selectedCard && (
         <CardDetailModal
           card={selectedCard}
+          boardId={params.id}
           onClose={() => setSelectedCard(null)}
           onSave={handleSaveCardDetails}
+          onLabelsUpdated={() => {
+            // Refetch cards to get updated labels
+            const listId = selectedCard.listId;
+            getCardsByList(listId).then(result => {
+              if (Array.isArray(result)) {
+                const transformedCards = result.map(card => ({
+                  ...card,
+                  labels: card.labels?.map((cl: any) => cl.label) || []
+                }));
+                setCardsByList(prev => ({ ...prev, [listId]: transformedCards }));
+              }
+            });
+          }}
         />
       )}
     </div>
@@ -549,7 +542,7 @@ export default function BoardPage() {
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, isDragDisabled }: {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, isDragDisabled, boardId }: {
   id: string;
   title: string;
   cards: Card[];
@@ -558,6 +551,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   onUpdateCard: (cardId: string, data: { title?: string }) => void;
   onCardClick: (card: Card) => void;
   isDragDisabled: boolean;
+  boardId: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const { setNodeRef: setDroppableRef } = useDroppable({ id: `list-${id}` });
@@ -629,10 +623,19 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
             <DraggableCard
               key={card.id}
               card={card}
+              boardId={boardId}
               onDelete={onDeleteCard}
               onUpdate={onUpdateCard}
               onClick={() => onCardClick(card)}
               isDragDisabled={isDragDisabled}
+              onLabelsUpdated={() => {
+                // Refetch cards to get updated labels
+                getCardsByList(id).then(result => {
+                  if (Array.isArray(result)) {
+                    setCardsByList(prev => ({ ...prev, [id]: result }));
+                  }
+                });
+              }}
             />
           ))}
         </SortableContext>

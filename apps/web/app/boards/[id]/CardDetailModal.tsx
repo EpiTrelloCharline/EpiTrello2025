@@ -1,5 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { CardLabelPicker } from './CardLabelPicker';
+
+type Label = {
+    id: string;
+    name: string;
+    color: string;
+};
 
 type Card = {
     id: string;
@@ -7,17 +14,22 @@ type Card = {
     title: string;
     description?: string;
     position: string;
+    labels?: Label[];
 };
 
 type CardDetailModalProps = {
     card: Card;
+    boardId: string;
     onClose: () => void;
     onSave: (data: { title: string; description: string }) => Promise<void> | void;
+    onLabelsUpdated?: () => void;
 };
 
-export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps) {
+export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdated }: CardDetailModalProps) {
     const [title, setTitle] = useState(card.title);
     const [description, setDescription] = useState(card.description || '');
+    const [showLabelPicker, setShowLabelPicker] = useState(false);
+    const labelButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
@@ -67,6 +79,25 @@ export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps)
                         </div>
                     </div>
 
+                    {/* Labels Section */}
+                    {card.labels && card.labels.length > 0 && (
+                        <div className="mb-6">
+                            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Labels</h3>
+                            <div className="flex flex-wrap gap-1">
+                                {card.labels.map(label => (
+                                    <div
+                                        key={label.id}
+                                        className="px-3 py-1.5 rounded text-sm font-semibold text-white cursor-pointer hover:opacity-80 transition-opacity"
+                                        style={{ backgroundColor: label.color }}
+                                        title={label.name}
+                                    >
+                                        {label.name}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex gap-8">
                         {/* Main Content */}
                         <div className="flex-1">
@@ -107,25 +138,46 @@ export function CardDetailModal({ card, onClose, onSave }: CardDetailModalProps)
                         <div className="w-48 space-y-2">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ajouter à la carte</h3>
                             <SidebarButton icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />} label="Membres" />
-                            <SidebarButton icon={<path d="M7 7h10v3l5-5-5-5v3H7v4z" />} label="Étiquettes" />
+                            <SidebarButton
+                                ref={labelButtonRef}
+                                icon={<path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z" />}
+                                label="Étiquettes"
+                                onClick={() => setShowLabelPicker(true)}
+                            />
                             <SidebarButton icon={<path d="M5 13l4 4L19 7" />} label="Checklist" />
                             <SidebarButton icon={<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} label="Dates" />
                         </div>
                     </div>
                 </div>
+
+                {/* Label Picker */}
+                {showLabelPicker && (
+                    <CardLabelPicker
+                        cardId={card.id}
+                        boardId={boardId}
+                        currentLabels={card.labels || []}
+                        onClose={() => setShowLabelPicker(false)}
+                        onLabelsUpdated={onLabelsUpdated}
+                        anchorEl={labelButtonRef.current}
+                    />
+                )}
             </div>
         </div>,
         document.body
     );
 }
 
-function SidebarButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+const SidebarButton = React.forwardRef<HTMLButtonElement, { icon: React.ReactNode; label: string; onClick?: () => void }>(function SidebarButton({ icon, label, onClick }, ref) {
     return (
-        <button className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors text-left">
+        <button
+            ref={ref}
+            onClick={onClick}
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors text-left"
+        >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 {icon}
             </svg>
             <span>{label}</span>
         </button>
     );
-}
+});
