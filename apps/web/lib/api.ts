@@ -54,3 +54,18 @@ export async function updateCard(cardId: string, data: { title?: string; descrip
   });
   return res.json();
 }
+
+export async function updateList(listId: string, title: string) {
+  const res = await api(`/lists/${listId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title }),
+  });
+  return res.json();
+}
+
+export async function deleteList(listId: string) {
+  const res = await api(`/lists/${listId}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}

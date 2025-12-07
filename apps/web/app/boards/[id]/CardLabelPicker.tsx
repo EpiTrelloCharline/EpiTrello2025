@@ -56,6 +56,7 @@ export function CardLabelPicker({
 
     useEffect(() => {
         fetchBoardLabels();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [boardId]);
 
     useEffect(() => {
@@ -329,7 +330,7 @@ export function CardLabelPicker({
                                     onClick={() => setShowDeleteConfirm(true)}
                                     className="w-full bg-red-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-red-700"
                                 >
-                                    Supprimer l'étiquette
+                                    Supprimer l&apos;étiquette
                                 </button>
                             )}
                         </div>
