@@ -66,6 +66,12 @@ export class BoardWriteGuard implements CanActivate {
             return await this.permissions.getBoardIdFromCard(cardId);
         }
 
+        // Case 4: listId from params - derive the boardId via the list
+        const listIdParam = request.params?.id;
+        if (listIdParam && request.route?.path?.includes('/lists/')) {
+            return await this.permissions.getBoardIdFromList(listIdParam);
+        }
+
         return null;
     }
 }

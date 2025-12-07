@@ -6,6 +6,6 @@ export class CreateListDto {
 
   @IsString() @IsNotEmpty() title!: string;
 
-  @IsOptional() @IsNumberString() after?: string; // id de la liste après laquelle on insère
+  @IsOptional() @IsString() after?: string; // id de la liste après laquelle on insère
 }
 
