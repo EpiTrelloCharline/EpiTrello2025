@@ -4,7 +4,7 @@ import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class ListsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   private async assertBoardMember(userId: string, boardId: string) {
     const m = await this.prisma.boardMember.findFirst({ where: { boardId, userId } });
@@ -43,6 +43,27 @@ export class ListsService {
     await this.assertBoardMember(userId, boardId);
 
     return this.prisma.list.update({ where: { id: listId }, data: { position: newPosition } });
+  }
+
+  async update(userId: string, listId: string, title: string) {
+    // Get the list to find its boardId
+    const list = await this.prisma.list.findUnique({ where: { id: listId } });
+    if (!list) throw new ForbiddenException('List not found');
+
+    await this.assertBoardMember(userId, list.boardId);
+
+    return this.prisma.list.update({ where: { id: listId }, data: { title } });
+  }
+
+  async delete(userId: string, listId: string) {
+    // Get the list to find its boardId
+    const list = await this.prisma.list.findUnique({ where: { id: listId } });
+    if (!list) throw new ForbiddenException('List not found');
+
+    await this.assertBoardMember(userId, list.boardId);
+
+    // Archive the list instead of hard delete
+    return this.prisma.list.update({ where: { id: listId }, data: { isArchived: true } });
   }
 }
 
