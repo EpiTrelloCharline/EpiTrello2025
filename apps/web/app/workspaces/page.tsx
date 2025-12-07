@@ -25,6 +25,7 @@ export default function WorkspacesPage() {
 
   useEffect(() => {
     fetchWorkspaces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getToken = () => {

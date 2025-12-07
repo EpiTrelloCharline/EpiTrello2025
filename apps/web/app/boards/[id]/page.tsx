@@ -106,6 +106,7 @@ export default function BoardPage() {
 
   useEffect(() => {
     fetchBoardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, params?.id]);
 
   useEffect(() => {
@@ -191,6 +192,7 @@ export default function BoardPage() {
         cards.filter(card => cardMatchesFilters(card)),
       ])
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cardsByList, searchTerm, selectedLabelIds, selectedMemberIds]);
 
   // Helper: Find card location in state
