@@ -13,12 +13,13 @@ const cards_controller_1 = require("./cards.controller");
 const prisma_service_1 = require("../prisma.service");
 const boards_module_1 = require("../boards/boards.module");
 const labels_module_1 = require("../labels/labels.module");
+const activities_module_1 = require("../activities/activities.module");
 let CardsModule = class CardsModule {
 };
 exports.CardsModule = CardsModule;
 exports.CardsModule = CardsModule = __decorate([
     (0, common_1.Module)({
-        imports: [boards_module_1.BoardsModule, labels_module_1.LabelsModule],
+        imports: [boards_module_1.BoardsModule, labels_module_1.LabelsModule, activities_module_1.ActivitiesModule],
         controllers: [cards_controller_1.CardsController],
         providers: [cards_service_1.CardsService, prisma_service_1.PrismaService],
     })

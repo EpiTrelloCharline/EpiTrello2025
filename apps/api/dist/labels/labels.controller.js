@@ -18,6 +18,7 @@ const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 const labels_service_1 = require("./labels.service");
 const create_label_dto_1 = require("./dto/create-label.dto");
 const update_label_dto_1 = require("./dto/update-label.dto");
+const assign_label_dto_1 = require("./dto/assign-label.dto");
 let LabelsController = class LabelsController {
     constructor(labelsService) {
         this.labelsService = labelsService;
@@ -33,6 +34,12 @@ let LabelsController = class LabelsController {
     }
     deleteLabel(labelId, req) {
         return this.labelsService.deleteLabel(req.user.id, labelId);
+    }
+    assignLabelToCard(cardId, dto, req) {
+        return this.labelsService.assignLabelToCard(req.user.id, cardId, dto.labelId);
+    }
+    removeLabelFromCard(cardId, labelId, req) {
+        return this.labelsService.removeLabelFromCard(req.user.id, cardId, labelId);
     }
 };
 exports.LabelsController = LabelsController;
@@ -70,6 +77,24 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], LabelsController.prototype, "deleteLabel", null);
+__decorate([
+    (0, common_1.Post)('cards/:id/labels'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, assign_label_dto_1.AssignLabelDto, Object]),
+    __metadata("design:returntype", void 0)
+], LabelsController.prototype, "assignLabelToCard", null);
+__decorate([
+    (0, common_1.Delete)('cards/:id/labels/:labelId'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('labelId')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", void 0)
+], LabelsController.prototype, "removeLabelFromCard", null);
 exports.LabelsController = LabelsController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)(),

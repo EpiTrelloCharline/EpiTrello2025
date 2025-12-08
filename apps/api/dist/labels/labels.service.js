@@ -12,23 +12,61 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.LabelsService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma.service");
+const activities_service_1 = require("../activities/activities.service");
+const client_1 = require("@prisma/client");
 let LabelsService = class LabelsService {
-    constructor(prisma) {
+    constructor(prisma, activitiesService) {
         this.prisma = prisma;
+        this.activitiesService = activitiesService;
+    }
+    async assignLabelToCard(userId, cardId, labelId) {
+        const card = await this.prisma.card.findUnique({
+            where: { id: cardId },
+            include: {
+                list: {
+                    include: { board: true },
+                },
+            },
+        });
+        if (!card) {
+            throw new common_1.NotFoundException("Card not found");
+        }
+        const boardId = card.list.boardId;
+        await this.checkBoardMembership(userId, boardId);
+        const label = await this.prisma.label.findUnique({
+            where: { id: labelId },
+        });
+        if (!label) {
+            throw new common_1.NotFoundException("Label not found");
+        }
+        if (label.boardId !== boardId) {
+            throw new common_1.ForbiddenException("Label does not belong to the same board as the card");
+        }
+        const existing = await this.prisma.cardLabel.findFirst({
+            where: { cardId, labelId },
+        });
+        if (existing) {
+            return { message: "Label already assigned to this card" };
+        }
+        await this.prisma.cardLabel.create({
+            data: { cardId, labelId },
+        });
+        await this.activitiesService.logActivity(boardId, userId, client_1.ActivityType.ADD_LABEL, card.id, `Étiquette "${label.name}" ajoutée à la carte "${card.title}"`);
+        return { message: "Label assigned successfully" };
     }
     async checkBoardMembership(userId, boardId) {
         const member = await this.prisma.boardMember.findFirst({
             where: { boardId, userId },
         });
         if (!member) {
-            throw new common_1.ForbiddenException('You are not a member of this board');
+            throw new common_1.ForbiddenException("You are not a member of this board");
         }
     }
     async getLabelsByBoard(userId, boardId) {
         await this.checkBoardMembership(userId, boardId);
         return this.prisma.label.findMany({
             where: { boardId },
-            orderBy: { createdAt: 'asc' },
+            orderBy: { createdAt: "asc" },
         });
     }
     async createLabel(userId, boardId, dto) {
@@ -46,7 +84,7 @@ let LabelsService = class LabelsService {
             where: { id: labelId },
         });
         if (!label) {
-            throw new common_1.NotFoundException('Label not found');
+            throw new common_1.NotFoundException("Label not found");
         }
         await this.checkBoardMembership(userId, label.boardId);
         return this.prisma.label.update({
@@ -59,47 +97,13 @@ let LabelsService = class LabelsService {
             where: { id: labelId },
         });
         if (!label) {
-            throw new common_1.NotFoundException('Label not found');
+            throw new common_1.NotFoundException("Label not found");
         }
         await this.checkBoardMembership(userId, label.boardId);
         await this.prisma.label.delete({
             where: { id: labelId },
         });
-        return { message: 'Label deleted successfully' };
-    }
-    async assignLabelToCard(userId, cardId, labelId) {
-        const card = await this.prisma.card.findUnique({
-            where: { id: cardId },
-            include: {
-                list: {
-                    include: { board: true },
-                },
-            },
-        });
-        if (!card) {
-            throw new common_1.NotFoundException('Card not found');
-        }
-        const boardId = card.list.boardId;
-        await this.checkBoardMembership(userId, boardId);
-        const label = await this.prisma.label.findUnique({
-            where: { id: labelId },
-        });
-        if (!label) {
-            throw new common_1.NotFoundException('Label not found');
-        }
-        if (label.boardId !== boardId) {
-            throw new common_1.ForbiddenException('Label does not belong to the same board as the card');
-        }
-        const existing = await this.prisma.cardLabel.findFirst({
-            where: { cardId, labelId },
-        });
-        if (existing) {
-            return { message: 'Label already assigned to this card' };
-        }
-        await this.prisma.cardLabel.create({
-            data: { cardId, labelId },
-        });
-        return { message: 'Label assigned successfully' };
+        return { message: "Label deleted successfully" };
     }
     async removeLabelFromCard(userId, cardId, labelId) {
         const card = await this.prisma.card.findUnique({
@@ -111,7 +115,7 @@ let LabelsService = class LabelsService {
             },
         });
         if (!card) {
-            throw new common_1.NotFoundException('Card not found');
+            throw new common_1.NotFoundException("Card not found");
         }
         const boardId = card.list.boardId;
         await this.checkBoardMembership(userId, boardId);
@@ -119,17 +123,18 @@ let LabelsService = class LabelsService {
             where: { cardId, labelId },
         });
         if (!cardLabel) {
-            throw new common_1.NotFoundException('Label is not assigned to this card');
+            throw new common_1.NotFoundException("Label is not assigned to this card");
         }
         await this.prisma.cardLabel.delete({
             where: { id: cardLabel.id },
         });
-        return { message: 'Label removed successfully' };
+        return { message: "Label removed successfully" };
     }
 };
 exports.LabelsService = LabelsService;
 exports.LabelsService = LabelsService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        activities_service_1.ActivitiesService])
 ], LabelsService);
 //# sourceMappingURL=labels.service.js.map

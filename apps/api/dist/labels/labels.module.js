@@ -11,11 +11,13 @@ const common_1 = require("@nestjs/common");
 const labels_controller_1 = require("./labels.controller");
 const labels_service_1 = require("./labels.service");
 const prisma_service_1 = require("../prisma.service");
+const activities_module_1 = require("../activities/activities.module");
 let LabelsModule = class LabelsModule {
 };
 exports.LabelsModule = LabelsModule;
 exports.LabelsModule = LabelsModule = __decorate([
     (0, common_1.Module)({
+        imports: [activities_module_1.ActivitiesModule],
         controllers: [labels_controller_1.LabelsController],
         providers: [labels_service_1.LabelsService, prisma_service_1.PrismaService],
         exports: [labels_service_1.LabelsService],
