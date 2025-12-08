@@ -22,6 +22,7 @@ model User {
   createdWorkspaces Workspace[]
   boardMembers  BoardMember[]
   cards         Card[]
+  activities    Activity[]
 }
 
 enum WorkspaceRole {
@@ -77,6 +78,7 @@ model Board {
   members     BoardMember[]
   lists       List[]
   labels      Label[]
+  activities  Activity[]
 }
 
 model BoardMember {
@@ -139,4 +141,25 @@ model CardLabel {
   label     Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
 
   @@unique([cardId, labelId]) 
+}
+
+enum ActivityType {
+  CREATE_CARD
+  DELETE_CARD
+  MOVE_CARD
+  UPDATE_DESCRIPTION
+  ADD_LABEL
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  boardId     String
+  userId      String
+  type        ActivityType
+  entityId    String       // ID of the card or list involved
+  details     String?      // JSON string or simple text for extra info (e.g. "Moved from List A to List B")
+  createdAt   DateTime     @default(now())
+
+  board       Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
