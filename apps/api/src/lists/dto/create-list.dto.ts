@@ -1,5 +1,5 @@
 // create-list.dto.ts
-import { IsNotEmpty, IsString, IsNumberString, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional } from "class-validator";
 
 export class CreateListDto {
   @IsString() @IsNotEmpty() boardId!: string;
@@ -8,4 +8,3 @@ export class CreateListDto {
 
   @IsOptional() @IsString() after?: string; // id de la liste après laquelle on insère
 }
-
