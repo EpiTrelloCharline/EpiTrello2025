@@ -22,7 +22,7 @@ export class ListsController {
     return this.svc.list(boardId, req.user.id);
   }
 
-  // Temporarily removed BoardWriteGuard to debug - service has assertBoardMember
+  @UseGuards(BoardWriteGuard)
   @Post()
   create(@Body() dto: CreateListDto, @Request() req: any) {
     return this.svc.create(req.user.id, dto.boardId, dto.title, dto.after);
