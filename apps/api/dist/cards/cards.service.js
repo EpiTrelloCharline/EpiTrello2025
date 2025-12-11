@@ -191,6 +191,53 @@ let CardsService = class CardsService {
         await this.activitiesService.logActivity(card.list.boardId, userId, client_1.ActivityType.DELETE_CARD, card.id, `Carte "${card.title}" archivée`);
         return updatedCard;
     }
+    async duplicate(userId, cardId) {
+        const card = await this.prisma.card.findUnique({
+            where: { id: cardId },
+            include: {
+                list: { include: { board: { include: { members: true } } } },
+                labels: { include: { label: true } },
+            },
+        });
+        if (!card)
+            throw new common_1.NotFoundException("Card not found");
+        const isMember = card.list.board.members.some((m) => m.userId === userId);
+        if (!isMember && card.list.board.createdById !== userId) {
+            throw new common_1.ForbiddenException("Not a board member");
+        }
+        const lastCard = await this.prisma.card.findFirst({
+            where: { listId: card.listId },
+            orderBy: { position: "desc" },
+        });
+        const position = lastCard ? Number(lastCard.position) + 1 : 1;
+        const newCard = await this.prisma.card.create({
+            data: {
+                title: card.title,
+                description: card.description,
+                listId: card.listId,
+                position: position,
+            },
+        });
+        if (card.labels && card.labels.length > 0) {
+            const createManyData = card.labels.map((cl) => ({
+                cardId: newCard.id,
+                labelId: cl.labelId,
+            }));
+            await this.prisma.cardLabel.createMany({
+                data: createManyData,
+                skipDuplicates: true,
+            });
+        }
+        const created = await this.prisma.card.findUnique({
+            where: { id: newCard.id },
+            include: {
+                labels: { include: { label: true } },
+                members: true,
+            },
+        });
+        await this.activitiesService.logActivity(card.list.boardId, userId, client_1.ActivityType.CREATE_CARD, created.id, `Carte "${created.title}" dupliquée dans la liste "${card.list.title}"`);
+        return created;
+    }
 };
 exports.CardsService = CardsService;
 exports.CardsService = CardsService = __decorate([

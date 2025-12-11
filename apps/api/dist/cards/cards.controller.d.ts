@@ -196,4 +196,37 @@ export declare class CardsController {
     removeLabel(cardId: string, labelId: string, req: any): Promise<{
         message: string;
     }>;
+    duplicate(cardId: string, req: any): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        title: string;
+        position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
+        listId: string;
+    }>;
 }
