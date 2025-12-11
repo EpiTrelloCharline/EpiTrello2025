@@ -19,6 +19,7 @@ import { api, getCardsByList, createCard, moveCard, updateCard, updateList, dele
 import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardMembers } from './BoardMembers';
+import { ActivitySidebar } from './ActivitySidebar';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -57,6 +58,9 @@ export default function BoardPage() {
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
+  
+  // Activity Sidebar State
+  const [isActivitySidebarOpen, setIsActivitySidebarOpen] = useState(false);
 
   const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0;
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -453,6 +457,16 @@ export default function BoardPage() {
           />
         )}
 
+        {/* Activity Button */}
+        <button
+          onClick={() => setIsActivitySidebarOpen(true)}
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors"
+          title="Voir l'historique des activités"
+        >
+          <span className="text-lg">📊</span>
+          <span className="hidden md:inline">Historique</span>
+        </button>
+
         <div className="flex flex-wrap items-center gap-4 flex-1">
           {/* Search Bar */}
           <input
@@ -590,6 +604,15 @@ export default function BoardPage() {
               }
             });
           }}
+        />
+      )}
+
+      {/* Activity Sidebar */}
+      {params?.id && (
+        <ActivitySidebar
+          boardId={params.id}
+          isOpen={isActivitySidebarOpen}
+          onClose={() => setIsActivitySidebarOpen(false)}
         />
       )}
     </div>

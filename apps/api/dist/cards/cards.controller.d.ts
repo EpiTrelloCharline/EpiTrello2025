@@ -8,49 +8,186 @@ export declare class CardsController {
     private readonly cardsService;
     private readonly labelsService;
     constructor(cardsService: CardsService, labelsService: LabelsService);
-    list(listId: string, req: any): Promise<{
+    list(listId: string, req: any): Promise<({
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
-    }[]>;
+    })[]>;
     create(createCardDto: CreateCardDto, req: any): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
-    move(moveCardDto: MoveCardDto, req: any): Promise<{
+    move(moveCardDto: MoveCardDto, req: any): Promise<({
+        list: {
+            id: string;
+            boardId: string;
+            title: string;
+            position: import("@prisma/client/runtime/library").Decimal;
+            isArchived: boolean;
+        };
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
-    }>;
+    }) | ({
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        description: string | null;
+        title: string;
+        position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
+        listId: string;
+    })>;
     update(id: string, updateCardDto: UpdateCardDto, req: any): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
     archive(id: string, req: any): Promise<{
+        members: {
+            id: string;
+            email: string;
+            name: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
+        labels: ({
+            label: {
+                id: string;
+                name: string;
+                createdAt: Date;
+                updatedAt: Date;
+                boardId: string;
+                color: string;
+            };
+        } & {
+            id: string;
+            createdAt: Date;
+            cardId: string;
+            labelId: string;
+        })[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
         description: string | null;
         title: string;
         position: import("@prisma/client/runtime/library").Decimal;
+        isArchived: boolean;
         listId: string;
     }>;
     assignLabel(cardId: string, dto: AssignLabelDto, req: any): Promise<{
