@@ -74,4 +74,17 @@ export class CardsController {
     ) {
         return this.labelsService.removeLabelFromCard(req.user.id, cardId, labelId);
     }
+
+    /**
+     * POST /cards/:id/duplicate
+     * Duplicate a card (title, description, labels, position calculated)
+     */
+    @UseGuards(BoardWriteGuard)
+    @Post(':id/duplicate')
+    duplicate(
+        @Param('id') cardId: string,
+        @Request() req: any,
+    ) {
+        return this.cardsService.duplicate(req.user.id, cardId);
+    }
 }

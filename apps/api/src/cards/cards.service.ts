@@ -246,4 +246,77 @@ export class CardsService {
 
     return updatedCard;
   }
+
+  /**
+   * Duplicate a card: copy title, description, labels and append to the end of the same list
+   */
+  async duplicate(userId: string, cardId: string) {
+    // Ensure user has access to the card (and board)
+    const card = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        list: { include: { board: { include: { members: true } } } },
+        labels: { include: { label: true } },
+      },
+    });
+
+    if (!card) throw new NotFoundException("Card not found");
+
+    const isMember = card.list.board.members.some((m) => m.userId === userId);
+    if (!isMember && card.list.board.createdById !== userId) {
+      throw new ForbiddenException("Not a board member");
+    }
+
+    // Determine new position: append to end of the list
+    const lastCard = await this.prisma.card.findFirst({
+      where: { listId: card.listId },
+      orderBy: { position: "desc" },
+    });
+
+    const position = lastCard ? Number(lastCard.position) + 1 : 1;
+
+    // Create the new card
+    const newCard = await this.prisma.card.create({
+      data: {
+        title: card.title,
+        description: card.description,
+        listId: card.listId,
+        position: position,
+      },
+    });
+
+    // Recreate label links
+    if (card.labels && card.labels.length > 0) {
+      const createManyData = card.labels.map((cl) => ({
+        cardId: newCard.id,
+        labelId: cl.labelId,
+      }));
+
+      // Use createMany to efficiently insert label relations
+      await this.prisma.cardLabel.createMany({
+        data: createManyData,
+        skipDuplicates: true,
+      });
+    }
+
+    // Return the newly created card with labels and members
+    const created = await this.prisma.card.findUnique({
+      where: { id: newCard.id },
+      include: {
+        labels: { include: { label: true } },
+        members: true,
+      },
+    });
+
+    // Log activity
+    await this.activitiesService.logActivity(
+      card.list.boardId,
+      userId,
+      ActivityType.CREATE_CARD,
+      created.id,
+      `Carte "${created.title}" dupliquée dans la liste "${card.list.title}"`
+    );
+
+    return created;
+  }
 }

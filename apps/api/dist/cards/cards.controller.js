@@ -49,6 +49,9 @@ let CardsController = class CardsController {
     removeLabel(cardId, labelId, req) {
         return this.labelsService.removeLabelFromCard(req.user.id, cardId, labelId);
     }
+    duplicate(cardId, req) {
+        return this.cardsService.duplicate(req.user.id, cardId);
+    }
 };
 exports.CardsController = CardsController;
 __decorate([
@@ -115,6 +118,15 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", void 0)
 ], CardsController.prototype, "removeLabel", null);
+__decorate([
+    (0, common_1.UseGuards)(board_write_guard_1.BoardWriteGuard),
+    (0, common_1.Post)(':id/duplicate'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], CardsController.prototype, "duplicate", null);
 exports.CardsController = CardsController = __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Controller)('cards'),
