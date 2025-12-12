@@ -1,4 +1,4 @@
-// File: /home/meuh/Documents/delivery/S9/EpiTrello2025/apps/web/app/layout.tsx
+// File: /home/charline/EpiTrello2025/apps/web/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

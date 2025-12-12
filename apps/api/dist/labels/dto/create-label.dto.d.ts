@@ -1,4 +1,1 @@
-export declare class CreateLabelDto {
-    name: string;
-    color: string;
-}
+export { CreateLabelDto } from '@epitrello/validation';
