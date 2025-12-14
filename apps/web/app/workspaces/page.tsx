@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Workspace {
   id: string;
@@ -23,16 +23,12 @@ export default function WorkspacesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
 
-  useEffect(() => {
-    fetchWorkspaces();
-  }, []);
-
   const getToken = () => {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('accessToken');
   };
 
-  const fetchWorkspaces = async () => {
+  const fetchWorkspaces = useCallback(async () => {
     try {
       const token = getToken();
       if (!token) {
@@ -59,7 +55,11 @@ export default function WorkspacesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setError, setLoading, setWorkspaces]); // Dependencies for useCallback
+
+  useEffect(() => {
+    fetchWorkspaces();
+  }, [fetchWorkspaces]); // fetchWorkspaces is now a dependency because it's wrapped in useCallback
 
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();

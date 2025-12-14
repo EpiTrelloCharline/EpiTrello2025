@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   DndContext,
@@ -67,7 +67,7 @@ export default function BoardPage() {
     })
   );
 
-  const fetchBoardData = () => {
+  const fetchBoardData = useCallback(() => {
     if (!token || !params?.id) return;
 
     // Fetch Board Details (for labels/members)
@@ -95,11 +95,11 @@ export default function BoardPage() {
         console.error(err);
         setLists([]);
       });
-  };
+  }, [token, params?.id, setBoard, setLists]);
 
   useEffect(() => {
     fetchBoardData();
-  }, [token, params?.id]);
+  }, [fetchBoardData]);
 
   useEffect(() => {
     async function loadCards() {
@@ -147,7 +147,7 @@ export default function BoardPage() {
     setTitle('');
   }
 
-  function cardMatchesFilters(card: Card) {
+  const cardMatchesFilters = useCallback((card: Card) => {
     if (searchTerm.trim() !== "") {
       const text = searchTerm.trim().toLowerCase();
       if (!card.title.toLowerCase().includes(text)) return false;
@@ -167,7 +167,7 @@ export default function BoardPage() {
     }
 
     return true;
-  }
+  }, [searchTerm, selectedLabelIds, selectedMemberIds]);
 
   const filteredCardsByList = useMemo(() => {
     return Object.fromEntries(
@@ -176,7 +176,7 @@ export default function BoardPage() {
         cards.filter(card => cardMatchesFilters(card)),
       ])
     );
-  }, [cardsByList, searchTerm, selectedLabelIds, selectedMemberIds]);
+  }, [cardsByList, cardMatchesFilters]);
 
   // Helper: Find card location in state
   function findCardLocation(

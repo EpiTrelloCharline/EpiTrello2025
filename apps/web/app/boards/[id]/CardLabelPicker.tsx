@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 
@@ -54,9 +54,21 @@ export function CardLabelPicker({
         { name: 'noir', value: '#344563' },
     ];
 
+    const fetchBoardLabels = useCallback(async () => {
+        try {
+            const response = await api(`/boards/${boardId}/labels`);
+            if (response.ok) {
+                const labels = await response.json();
+                setBoardLabels(labels);
+            }
+        } catch (error) {
+            console.error('Failed to fetch board labels:', error);
+        }
+    }, [boardId, setBoardLabels]);
+
     useEffect(() => {
         fetchBoardLabels();
-    }, [boardId]);
+    }, [boardId, fetchBoardLabels]);
 
     useEffect(() => {
         if (anchorEl) {
@@ -82,17 +94,7 @@ export function CardLabelPicker({
         return () => window.removeEventListener('keydown', handleEscape);
     }, [onClose, editingLabelId]);
 
-    async function fetchBoardLabels() {
-        try {
-            const response = await api(`/boards/${boardId}/labels`);
-            if (response.ok) {
-                const labels = await response.json();
-                setBoardLabels(labels);
-            }
-        } catch (error) {
-            console.error('Failed to fetch board labels:', error);
-        }
-    }
+
 
     async function toggleLabel(labelId: string) {
         const isSelected = selectedLabelIds.has(labelId);
@@ -329,7 +331,7 @@ export function CardLabelPicker({
                                     onClick={() => setShowDeleteConfirm(true)}
                                     className="w-full bg-red-600 text-white px-3 py-2 rounded text-sm font-medium hover:bg-red-700"
                                 >
-                                    Supprimer l'étiquette
+                                    Supprimer l&apos;étiquette
                                 </button>
                             )}
                         </div>
