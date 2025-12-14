@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import {
   DndContext,
@@ -24,17 +24,15 @@ import { ActivitySidebar } from './ActivitySidebar';
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
 type Member = { id: string; userId: string; role: string; user: { id: string; name: string | null; email: string } };
+type User = { id: string; name: string | null; email: string };
 type Card = {
   id: string;
   listId: string;
   title: string;
   position: string;
   labels?: Label[];
-  members?: Member[]; // Note: members on card are User[] in schema, but we might get them as User objects. Let's check api response.
-  // Actually, schema says members User[]. So card.members will be User objects.
-  // But board.members are BoardMember[].
+  members?: User[]; // Card members are User objects from the API
 };
-type User = { id: string; name: string | null; email: string };
 
 type Board = {
   id: string;
@@ -58,7 +56,7 @@ export default function BoardPage() {
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
-  
+
   // Activity Sidebar State
   const [isActivitySidebarOpen, setIsActivitySidebarOpen] = useState(false);
 
@@ -78,7 +76,7 @@ export default function BoardPage() {
     })
   );
 
-  const fetchBoardData = () => {
+  const fetchBoardData = useCallback(() => {
     if (!token || !params?.id) return;
 
     // Fetch Board Details (for labels/members)
@@ -106,12 +104,11 @@ export default function BoardPage() {
         console.error(err);
         setLists([]);
       });
-  };
+  }, [token, params?.id, setBoard, setLists]);
 
   useEffect(() => {
     fetchBoardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, params?.id]);
+  }, [fetchBoardData]);
 
   useEffect(() => {
     async function loadCards() {
@@ -167,7 +164,7 @@ export default function BoardPage() {
     setTitle('');
   }
 
-  function cardMatchesFilters(card: Card) {
+  const cardMatchesFilters = useCallback((card: Card) => {
     if (searchTerm.trim() !== "") {
       const text = searchTerm.trim().toLowerCase();
       if (!card.title.toLowerCase().includes(text)) return false;
@@ -187,7 +184,7 @@ export default function BoardPage() {
     }
 
     return true;
-  }
+  }, [searchTerm, selectedLabelIds, selectedMemberIds]);
 
   const filteredCardsByList = useMemo(() => {
     return Object.fromEntries(
@@ -196,8 +193,7 @@ export default function BoardPage() {
         cards.filter(card => cardMatchesFilters(card)),
       ])
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardsByList, searchTerm, selectedLabelIds, selectedMemberIds]);
+  }, [cardsByList, cardMatchesFilters]);
 
   // Helper: Find card location in state
   function findCardLocation(
