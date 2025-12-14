@@ -15,10 +15,11 @@ import {
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { api, getCardsByList, createCard, moveCard, updateCard } from '@/lib/api';
+import { api, getCardsByList, createCard, moveCard, updateCard, updateList, deleteList } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardMembers } from './BoardMembers';
+import { ActivitySidebar } from './ActivitySidebar';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -56,8 +57,16 @@ export default function BoardPage() {
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [board, setBoard] = useState<Board | null>(null);
 
+  // Activity Sidebar State
+  const [isActivitySidebarOpen, setIsActivitySidebarOpen] = useState(false);
+
   const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0;
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+
+  // Debug log
+  useEffect(() => {
+    console.log('BoardPage mounted, params:', params, 'params.id:', params?.id);
+  }, [params]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -139,6 +148,14 @@ export default function BoardPage() {
 
   async function createList() {
     if (!title.trim()) return;
+
+    console.log('createList called, params:', params, 'boardId:', params?.id);
+
+    if (!params?.id) {
+      console.error('Board ID is undefined!');
+      alert('Erreur: ID du board non trouvé');
+      return;
+    }
 
     const after = lists.length ? lists[lists.length - 1].id : undefined;
     const r = await api('/lists', { method: 'POST', body: JSON.stringify({ boardId: params.id, title, after }) });
@@ -383,6 +400,44 @@ export default function BoardPage() {
     }
   }
 
+  async function handleUpdateList(listId: string, newTitle: string) {
+    if (!newTitle.trim()) return;
+
+    // Optimistic update
+    const previousLists = [...lists];
+    setLists(prev => prev.map(l => l.id === listId ? { ...l, title: newTitle } : l));
+
+    try {
+      await updateList(listId, newTitle);
+    } catch (error) {
+      console.error('Failed to update list:', error);
+      setLists(previousLists);
+      alert('Échec de la mise à jour de la liste. Les modifications ont été annulées.');
+    }
+  }
+
+  async function handleDeleteList(listId: string) {
+    // Optimistic update
+    const previousLists = [...lists];
+    const previousCards = { ...cardsByList };
+
+    setLists(prev => prev.filter(l => l.id !== listId));
+    setCardsByList(prev => {
+      const newState = { ...prev };
+      delete newState[listId];
+      return newState;
+    });
+
+    try {
+      await deleteList(listId);
+    } catch (error) {
+      console.error('Failed to delete list:', error);
+      setLists(previousLists);
+      setCardsByList(previousCards);
+      alert('Échec de la suppression de la liste. Les modifications ont été annulées.');
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col bg-[#0079bf]">
       {/* Header du board */}
@@ -397,6 +452,16 @@ export default function BoardPage() {
             onMemberAdded={fetchBoardData}
           />
         )}
+
+        {/* Activity Button */}
+        <button
+          onClick={() => setIsActivitySidebarOpen(true)}
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors"
+          title="Voir l'historique des activités"
+        >
+          <span className="text-lg">📊</span>
+          <span className="hidden md:inline">Historique</span>
+        </button>
 
         <div className="flex flex-wrap items-center gap-4 flex-1">
           {/* Search Bar */}
@@ -475,6 +540,8 @@ export default function BoardPage() {
                   onDeleteCard={handleDeleteCard}
                   onUpdateCard={handleUpdateCard}
                   onCardClick={setSelectedCard}
+                  onUpdateList={handleUpdateList}
+                  onDeleteList={handleDeleteList}
                   isDragDisabled={isFiltering}
                   boardId={params.id}
                 />
@@ -487,7 +554,7 @@ export default function BoardPage() {
                 <div className="bg-[#f1f2f4] p-2 rounded-lg">
                   <input
                     autoFocus
-                    className="w-full px-2 py-1 text-sm border-2 border-blue-600 rounded mb-2 focus:outline-none"
+                    className="w-full px-2 py-1 text-sm text-gray-900 bg-white border-2 border-blue-600 rounded mb-2 focus:outline-none"
                     placeholder="Saisissez le titre de la liste..."
                     value={title}
                     onChange={e => setTitle(e.target.value)}
@@ -535,12 +602,21 @@ export default function BoardPage() {
           }}
         />
       )}
+
+      {/* Activity Sidebar */}
+      {params?.id && (
+        <ActivitySidebar
+          boardId={params.id}
+          isOpen={isActivitySidebarOpen}
+          onClose={() => setIsActivitySidebarOpen(false)}
+        />
+      )}
     </div>
   );
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, isDragDisabled, boardId }: {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, onUpdateList, onDeleteList, isDragDisabled, boardId }: {
   id: string;
   title: string;
   cards: Card[];
@@ -548,6 +624,8 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   onDeleteCard: (cardId: string) => void;
   onUpdateCard: (cardId: string, data: { title?: string }) => void;
   onCardClick: (card: Card) => void;
+  onUpdateList: (listId: string, newTitle: string) => void;
+  onDeleteList: (listId: string) => void;
   isDragDisabled: boolean;
   boardId: string;
 }) {
@@ -556,6 +634,29 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   const style = { transform: CSS.Translate.toString(transform), transition };
   const [isAdding, setIsAdding] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  function handleSaveTitle() {
+    const trimmed = editedTitle.trim();
+    if (trimmed && trimmed !== title) {
+      onUpdateList(id, trimmed);
+    }
+    setIsEditingTitle(false);
+    setEditedTitle(title);
+  }
+
+  function handleCancelEdit() {
+    setIsEditingTitle(false);
+    setEditedTitle(title);
+  }
+
+  function handleConfirmDelete() {
+    onDeleteList(id);
+    setShowDeleteConfirm(false);
+  }
 
   async function handleAddCard() {
     const title = newCardTitle.trim();
@@ -610,10 +711,94 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   return (
     <div ref={setNodeRef} style={style}
       className="min-w-[272px] max-w-[272px] bg-[#f1f2f4] rounded-xl p-2 shadow-sm flex flex-col max-h-full">
-      <div {...attributes} {...listeners} className="font-semibold text-sm text-[#172b4d] px-2 py-2 mb-1 flex justify-between items-center cursor-grab active:cursor-grabbing">
-        {title}
-        <button className="hover:bg-gray-200 p-1 rounded text-gray-500" onClick={(e) => e.stopPropagation()}>•••</button>
+
+
+      {/* Header with inline editing */}
+      <div className="px-2 py-2 mb-1 flex justify-between items-center gap-2">
+        {/* Title - editable and draggable */}
+        {isEditingTitle ? (
+          <input
+            autoFocus
+            type="text"
+            value={editedTitle}
+            onChange={(e) => setEditedTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleSaveTitle();
+              if (e.key === 'Escape') handleCancelEdit();
+            }}
+            onBlur={handleSaveTitle}
+            className="flex-1 font-semibold text-sm text-[#172b4d] px-2 py-1 border-2 border-blue-600 rounded focus:outline-none bg-white"
+          />
+        ) : (
+          <div className="flex-1 px-2 py-1">
+            <div
+              {...attributes}
+              {...listeners}
+              className="font-semibold text-sm text-[#172b4d] cursor-grab active:cursor-grabbing"
+            >
+              {title}
+            </div>
+          </div>
+        )}
+
+        {/* Menu button */}
+        <div className="relative">
+          <button
+            className="hover:bg-gray-200 p-1 rounded text-gray-500"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowMenu(!showMenu);
+            }}
+          >
+            •••
+          </button>
+
+          {showMenu && (
+            <div className="absolute right-0 top-8 bg-white shadow-lg rounded-lg py-2 z-50 min-w-[200px] border border-gray-200">
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-gray-700"
+                onClick={() => {
+                  setShowMenu(false);
+                  setIsEditingTitle(true);
+                }}
+              >
+                Renommer la liste
+              </button>
+              <button
+                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600"
+                onClick={() => {
+                  setShowMenu(false);
+                  setShowDeleteConfirm(true);
+                }}
+              >
+                Supprimer la liste
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2 mx-1">
+          <p className="text-sm text-red-800 mb-2">Êtes-vous sûr de vouloir supprimer cette liste ?</p>
+          <div className="flex gap-2">
+            <button
+              className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+              onClick={handleConfirmDelete}
+            >
+              Confirmer
+            </button>
+            <button
+              className="bg-gray-200 text-gray-700 px-3 py-1 rounded text-sm hover:bg-gray-300"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
 
       <div ref={setDroppableRef} className="space-y-2 overflow-y-auto flex-1 min-h-[100px] px-1 custom-scrollbar">
         <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
