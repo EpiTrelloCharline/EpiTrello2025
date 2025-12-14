@@ -109,9 +109,7 @@ Les listes et cartes utilisent un système de **positionnement décimal** pour �
 
 ### 1. Démarrer Docker
 
-```bash
-sudo docker-compose up -d
-```
+<h2 id="guide">Guide de Démarrage Rapide</h2>
 
 Cela démarre:
 - PostgreSQL sur le port 5432
@@ -119,12 +117,7 @@ Cela démarre:
 
 ### 2. Configurer l'environnement API
 
-Créez `apps/api/.env` :
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/epi_trello
-JWT_ACCESS_SECRET=mon-secret-super-securise-changez-ca-en-production
-PORT=3001
-```
+---
 
 ### 3. Installer les dépendances et exécuter les migrations
 
