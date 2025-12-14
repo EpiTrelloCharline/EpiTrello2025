@@ -108,7 +108,10 @@ export function CardLabelPicker({
                     return next;
                 });
             } else {
-                await api(`/cards/${cardId}/labels/${labelId}`, { method: 'POST' });
+                await api(`/cards/${cardId}/labels`, {
+                    method: 'POST',
+                    body: JSON.stringify({ labelId })
+                });
                 setSelectedLabelIds(prev => new Set(prev).add(labelId));
             }
             onLabelsUpdated?.();

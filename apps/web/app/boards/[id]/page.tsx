@@ -383,12 +383,15 @@ export default function BoardPage() {
 
     // Optimistic update
     setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
-    setCardsByList(prev => ({
-      ...prev,
-      [selectedCard.listId]: prev[selectedCard.listId].map(c =>
-        c.id === selectedCard.id ? { ...c, ...data } : c
-      )
-    }));
+    setCardsByList(prev => {
+      const listCards = prev[selectedCard.listId] || [];
+      return {
+        ...prev,
+        [selectedCard.listId]: listCards.map(c =>
+          c.id === selectedCard.id ? { ...c, ...data } : c
+        )
+      };
+    });
 
     try {
       await updateCard(selectedCard.id, data);
@@ -456,10 +459,12 @@ export default function BoardPage() {
         {/* Activity Button */}
         <button
           onClick={() => setIsActivitySidebarOpen(true)}
-          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors"
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors text-white"
           title="Voir l'historique des activités"
         >
-          <span className="text-lg">📊</span>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          </svg>
           <span className="hidden md:inline">Historique</span>
         </button>
 
@@ -684,14 +689,23 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
 
     try {
       const created = await createCard(id, title);
+      console.log('Created card from API:', created);
 
-      // Remplacer la temp par la vraie carte
+      // Remplacer la temp par la vraie carte, en transformant les labels
+      const transformedCard = {
+        ...created,
+        title: created.title || title,  // Ensure title is present
+        listId: created.listId || id,    // Ensure listId is present
+        labels: created.labels?.map((cl: any) => cl.label || cl) || []
+      };
+      console.log('Transformed card:', transformedCard);
+
       setCardsByList((prev) => {
         const currentCards = Array.isArray(prev[id]) ? prev[id] : [];
         return {
           ...prev,
           [id]: currentCards.map((c) =>
-            c.id === tempId ? created : c
+            c.id === tempId ? transformedCard : c
           ),
         };
       });

@@ -13,9 +13,9 @@ type Label = {
     color: string;
 };
 
-type User = { 
-    id: string; 
-    name: string | null; 
+type User = {
+    id: string;
+    name: string | null;
     email: string;
 };
 
@@ -116,16 +116,16 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                         ))}
                     </div>
                 )}
-                <span className="text-sm text-[#172b4d] block min-h-[1.5em] break-words">{card.title}</span>
+                <span className="text-sm text-black block min-h-[1.5em] break-words">{card.title}</span>
 
-                {/* Member Avatars */} 
+                {/* Member Avatars */}
                 {card.members && card.members.length > 0 && (
-                    <div className="mt-2"> 
-                        <CardMemberAvatars members={card.members} /> 
-                    </div> 
+                    <div className="mt-2">
+                        <CardMemberAvatars members={card.members} />
+                    </div>
                 )}
                 <button
-                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-gray-500 z-10"
+                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-black z-10"
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={handleEditClick}
                 >
