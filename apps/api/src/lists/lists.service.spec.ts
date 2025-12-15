@@ -28,7 +28,8 @@ describe('ListsService', () => {
         }).compile();
 
         service = module.get<ListsService>(ListsService);
-        prismaService = module.get<PrismaService>(PrismaService);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _prismaService = module.get<PrismaService>(PrismaService);
 
         jest.clearAllMocks();
     });

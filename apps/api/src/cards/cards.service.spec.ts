@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CardsService } from './cards.service';
 import { PrismaService } from '../prisma.service';
 import { ActivitiesService } from '../activities/activities.service';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { ActivityType } from '@prisma/client';
 
 describe('CardsService', () => {
@@ -40,8 +40,10 @@ describe('CardsService', () => {
         }).compile();
 
         service = module.get<CardsService>(CardsService);
-        prismaService = module.get<PrismaService>(PrismaService);
-        activitiesService = module.get<ActivitiesService>(ActivitiesService);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _prismaService = module.get<PrismaService>(PrismaService);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _activitiesService = module.get<ActivitiesService>(ActivitiesService);
 
         jest.clearAllMocks();
     });

@@ -42,7 +42,9 @@ describe('BoardsService', () => {
         }).compile();
 
         service = module.get<BoardsService>(BoardsService);
-        prismaService = module.get<PrismaService>(PrismaService);
+        // prismaService declared for potential future use
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const _prismaService = module.get<PrismaService>(PrismaService);
 
         jest.clearAllMocks();
     });
