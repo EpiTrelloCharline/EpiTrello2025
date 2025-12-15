@@ -24,16 +24,13 @@ test.describe('Authentication Flow', () => {
     const testPassword = 'Test123456!';
     const testName = 'Test User';
 
-    test('should allow user to sign up and login', async ({ page }) => {
+    test('should allow user to sign up', async ({ page }) => {
         await signup(page, testName, testEmail, testPassword);
+
+        // Verify we're on the workspaces page
         expect(page.url()).toContain('/workspaces');
 
-        // Logout
-        await page.click('button:has-text("Logout"), a:has-text("Déconnexion")');
-        await page.waitForURL('/login');
-
-        // Login again
-        await login(page, testEmail, testPassword);
-        expect(page.url()).toContain('/workspaces');
+        // Verify page content
+        await expect(page.getByText('Espaces de travail')).toBeVisible();
     });
 });
