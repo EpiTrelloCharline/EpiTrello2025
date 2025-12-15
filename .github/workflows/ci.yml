@@ -46,8 +46,30 @@ jobs:
       - name: Build all packages
         run: pnpm -r build
 
-      - name: Run API tests
-        run: cd apps/api && pnpm run test --passWithNoTests
+      - name: Run API tests with coverage
+        run: cd apps/api && pnpm run test:cov
+
+      - name: Upload API coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./apps/api/coverage/lcov.info
+          flags: api
+
+      - name: Install Playwright dependencies
+        run: cd packages/e2e-tests && pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: cd packages/e2e-tests && pnpm test
+        env:
+          BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:3000' }}
+
+      - name: Upload E2E test report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: packages/e2e-tests/playwright-report/
+          retention-days: 7
 
       - name: Lint API
         run: cd apps/api && pnpm run lint
