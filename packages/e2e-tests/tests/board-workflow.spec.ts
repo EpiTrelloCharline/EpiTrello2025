@@ -16,7 +16,7 @@ test.describe('Board Workflow', () => {
         // Sign up for each test to ensure clean state
         await page.goto('/login');
         // Click on "S'inscrire" button to toggle to signup mode
-        await page.click('text="Pas encore de compte ? S\'inscrire", text="S\'inscrire"');
+        await page.getByText("Pas encore de compte ? S'inscrire").click();
         await page.fill('input[name="name"]', 'Board Test User');
         await page.fill('input[name="email"]', testEmail);
         await page.fill('input[name="password"]', testPassword);
