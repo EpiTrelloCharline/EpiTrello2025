@@ -9,7 +9,6 @@ import {
 
 describe('BoardsService', () => {
     let service: BoardsService;
-    let prismaService: PrismaService;
 
     const mockPrismaService = {
         workspaceMember: {

@@ -7,8 +7,6 @@ import { ActivityType } from '@prisma/client';
 
 describe('CardsService', () => {
     let service: CardsService;
-    let prismaService: PrismaService;
-    let activitiesService: ActivitiesService;
 
     const mockPrismaService = {
         card: {

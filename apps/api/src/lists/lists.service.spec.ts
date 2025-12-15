@@ -5,7 +5,6 @@ import { ForbiddenException } from '@nestjs/common';
 
 describe('ListsService', () => {
     let service: ListsService;
-    let prismaService: PrismaService;
 
     const mockPrismaService = {
         boardMember: {
