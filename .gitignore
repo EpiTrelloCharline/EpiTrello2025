@@ -24,3 +24,8 @@ next-env.d.ts
 
 # Test environment
 .env.test
+
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
