@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+dist/
+apps/web/.next/
+apps/api/dist/
+dist/
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# TypeScript
+next-env.d.ts
+*.tsbuildinfo
+
+# Test environment
+.env.test
