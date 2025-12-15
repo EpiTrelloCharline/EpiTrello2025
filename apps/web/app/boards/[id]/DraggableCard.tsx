@@ -4,6 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState, useEffect, useRef, forwardRef } from 'react';
 import { createPortal } from 'react-dom';
+import ContextMenu from '@/app/components/ContextMenu';
 import { CardLabelPicker } from './CardLabelPicker';
 import { CardMemberAvatars } from './CardMemberAvatars';
 
@@ -36,9 +37,10 @@ type DraggableCardProps = {
     onClick?: () => void;
     isDragDisabled?: boolean;
     onLabelsUpdated?: () => void;
+    onDuplicate?: (cardId: string) => void;
 };
 
-export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDragDisabled, onLabelsUpdated }: DraggableCardProps) {
+export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDragDisabled, onLabelsUpdated, onDuplicate }: DraggableCardProps) {
     const {
         attributes,
         listeners,
@@ -53,6 +55,9 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
     const [showLabelPicker, setShowLabelPicker] = useState(false);
     const [editTitle, setEditTitle] = useState(card.title);
     const [editPos, setEditPos] = useState({ top: 0, left: 0, width: 0 });
+    const [showContextMenu, setShowContextMenu] = useState(false); 
+    const [contextPos, setContextPos] = useState({ x: 0, y: 0 }); 
+
     const cardRef = useRef<HTMLElement | null>(null);
     const labelButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -102,6 +107,12 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                 {...listeners}
                 className="bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative"
                 onClick={onClick}
+                onContextMenu={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setContextPos({ x: e.clientX, y: e.clientY });
+                    setShowContextMenu(true);
+                }}
             >
                 {/* Labels - compact colored bars */}
                 {card.labels && card.labels.length > 0 && (
@@ -257,6 +268,50 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                     )}
                 </div>,
                 document.body
+            )}
+
+            {showContextMenu && (
+                <ContextMenu
+                    x={contextPos.x}
+                    y={contextPos.y}
+                    onClose={() => setShowContextMenu(false)}
+                    items={[
+                        {
+                            id: 'edit',
+                            label: 'Modifier',
+                            onClick: () => {
+                                // open inline editor
+                                if (cardRef.current) {
+                                    const rect = cardRef.current.getBoundingClientRect();
+                                    setEditPos({ top: rect.top, left: rect.left, width: rect.width });
+                                }
+                                setIsEditing(true);
+                            }
+                        },
+                        {
+                            id: 'open',
+                            label: 'Ouvrir',
+                            onClick: () => {
+                                onClick?.();
+                            }
+                        },
+                        {
+                            id: 'duplicate',
+                            label: 'Dupliquer',
+                            onClick: () => {
+                                onDuplicate?.(card.id);
+                            }
+                        },
+                        {
+                            id: 'archive',
+                            label: 'Archiver',
+                            onClick: () => {
+                                setShowArchiveConfirm(true);
+                            },
+                            danger: true,
+                        }
+                    ]}
+                />
             )}
         </>
     );
