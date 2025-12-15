@@ -1,7 +1,9 @@
 import { test, expect, Page } from '@playwright/test';
 
 async function signup(page: Page, name: string, email: string, password: string) {
-    await page.goto('/signup');
+    await page.goto('/login');
+    // Click on "S'inscrire" button to toggle to signup mode
+    await page.click('text="Pas encore de compte ? S\'inscrire", text="S\'inscrire"');
     await page.fill('input[name="name"]', name);
     await page.fill('input[name="email"]', email);
     await page.fill('input[name="password"]', password);

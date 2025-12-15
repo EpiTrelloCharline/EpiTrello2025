@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      const body = isLogin 
+      const body = isLogin
         ? { email, password }
         : { email, password, name: name || undefined };
 
@@ -35,10 +35,10 @@ export default function LoginPage() {
       }
 
       const data = await response.json();
-      
+
       // Stocker le token
       localStorage.setItem('accessToken', data.accessToken);
-      
+
       // Rediriger vers les workspaces
       router.push('/workspaces');
       router.refresh();
@@ -72,6 +72,7 @@ export default function LoginPage() {
               <label className="block text-sm font-medium mb-1">Nom</label>
               <input
                 type="text"
+                name="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full px-3 py-2 border rounded"
@@ -84,6 +85,7 @@ export default function LoginPage() {
             <label className="block text-sm font-medium mb-1">Email</label>
             <input
               type="email"
+              name="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border rounded"
@@ -96,6 +98,7 @@ export default function LoginPage() {
             <label className="block text-sm font-medium mb-1">Mot de passe</label>
             <input
               type="password"
+              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded"
