@@ -6,18 +6,18 @@ Application de gestion de projets de type Trello, développée avec NestJS (back
 
 ### Guides de Démarrage
 
-- **[QUICK_START.md](QUICK_START.md)** - Guide de démarrage rapide du projet
-- **[TESTING_GUIDE.md](TESTING_GUIDE.md)** - Guide pour tester l'application
+- **[QUICK_START.md](docs/guides/QUICK_START.md)** - Guide de démarrage rapide du projet
+- **[TESTING_GUIDE.md](docs/guides/TESTING_GUIDE.md)** - Guide pour tester l'application
 
 ### Documentation Technique
 
-- **[PERMISSIONS.md](PERMISSIONS.md)** - 🔐 **Documentation complète du système de permissions**
+- **[PERMISSIONS.md](docs/technical/features/PERMISSIONS.md)** - 🔐 **Documentation complète du système de permissions**
   - Architecture et composants
   - Rôles et matrice des permissions (OWNER, ADMIN, MEMBER, OBSERVER)
   - Exemples de code et utilisation
   - Guide de test
 
-- **[TESTING_PERMISSIONS.md](TESTING_PERMISSIONS.md)** - 🧪 **Guide de test manuel des permissions**
+- **[TESTING_PERMISSIONS.md](docs/guides/testing/TESTING_PERMISSIONS.md)** - 🧪 **Guide de test manuel des permissions**
   - Tests avec Postman/Thunder Client/Insomnia
   - Instructions étape par étape
   - Tableau récapitulatif des tests
@@ -96,8 +96,10 @@ EpiTrello2025/
 │   │   │   └── workspaces/
 │   │   └── prisma/       # Schéma de base de données
 │   └── web/              # Frontend Next.js
-├── PERMISSIONS.md        # 🔐 Doc système de permissions
-├── TESTING_PERMISSIONS.md # 🧪 Guide de test manuel
+├── docs/                 # 📚 Documentation
+│   ├── guides/          # Guides utilisateur
+│   ├── project/         # Documentation projet  
+│   └── technical/       # Documentation technique
 └── docker-compose.yml    # Services Docker
 ```
 
@@ -120,7 +122,7 @@ Le projet implémente un système de permissions basé sur les rôles pour contr
 - **BoardReadGuard** - Guard pour les endpoints de lecture (GET)
 - **BoardWriteGuard** - Guard pour les endpoints d'écriture (POST/PATCH/DELETE)
 
-📖 **Voir [PERMISSIONS.md](PERMISSIONS.md) pour la documentation complète**
+📖 **Voir [PERMISSIONS.md](docs/technical/features/PERMISSIONS.md) pour la documentation complète**
 
 ## 🛠️ Technologies
 
