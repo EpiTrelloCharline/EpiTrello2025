@@ -8,13 +8,15 @@ import { CreateCardDto } from "./dto/create-card.dto";
 import { MoveCardDto } from "./dto/move-card.dto";
 import { UpdateCardDto } from "./dto/update-card.dto";
 import { ActivitiesService } from "../activities/activities.service";
-import { ActivityType } from "@prisma/client";
+import { ActivityType, NotificationType } from "@prisma/client";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class CardsService {
   constructor(
     private prisma: PrismaService,
     private activitiesService: ActivitiesService,
+    private notificationsService: NotificationsService,
   ) { }
 
   private async assertBoardMember(userId: string, listId: string) {
@@ -111,6 +113,15 @@ export class CardsService {
       `Carte "${card.title}" créée dans la liste "${list.title}"`
     );
 
+    // Notify board members
+    await this.notificationsService.notifyBoardMembers(
+      list.boardId,
+      userId,
+      NotificationType.CARD_CREATED,
+      `Nouvelle carte "${card.title}" créée dans "${list.title}"`,
+      card.id,
+    );
+
     return card;
   }
 
@@ -173,6 +184,15 @@ export class CardsService {
         updatedCard.id,
         `Carte "${updatedCard.title}" déplacée de "${sourceList.title}" vers "${targetList.title}"`
       );
+
+      // Notify board members
+      await this.notificationsService.notifyBoardMembers(
+        sourceList.boardId,
+        userId,
+        NotificationType.CARD_MOVED,
+        `Carte "${updatedCard.title}" déplacée vers "${targetList.title}"`,
+        updatedCard.id,
+      );
     }
 
     return updatedCard;
@@ -213,6 +233,15 @@ export class CardsService {
         card.id,
         `Description modifiée pour la carte "${card.title}"`
       );
+
+      // Notify board members
+      await this.notificationsService.notifyBoardMembers(
+        card.list.boardId,
+        userId,
+        NotificationType.CARD_UPDATED,
+        `Carte "${card.title}" mise à jour`,
+        card.id,
+      );
     }
 
     return updatedCard;
@@ -242,6 +271,15 @@ export class CardsService {
       ActivityType.DELETE_CARD,
       card.id,
       `Carte "${card.title}" archivée`
+    );
+
+    // Notify board members
+    await this.notificationsService.notifyBoardMembers(
+      card.list.boardId,
+      userId,
+      NotificationType.CARD_DELETED,
+      `Carte "${card.title}" archivée`,
+      card.id,
     );
 
     return updatedCard;
