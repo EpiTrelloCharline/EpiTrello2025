@@ -55,8 +55,8 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
     const [showLabelPicker, setShowLabelPicker] = useState(false);
     const [editTitle, setEditTitle] = useState(card.title);
     const [editPos, setEditPos] = useState({ top: 0, left: 0, width: 0 });
-    const [showContextMenu, setShowContextMenu] = useState(false); 
-    const [contextPos, setContextPos] = useState({ x: 0, y: 0 }); 
+    const [showContextMenu, setShowContextMenu] = useState(false);
+    const [contextPos, setContextPos] = useState({ x: 0, y: 0 });
 
     const cardRef = useRef<HTMLElement | null>(null);
     const labelButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -105,13 +105,20 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                 style={style}
                 {...attributes}
                 {...listeners}
-                className="bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative"
+                className="bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative focus:outline-none focus:ring-2 focus:ring-blue-500"
                 onClick={onClick}
                 onContextMenu={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     setContextPos({ x: e.clientX, y: e.clientY });
                     setShowContextMenu(true);
+                }}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onClick?.();
+                    }
                 }}
             >
                 {/* Labels - compact colored bars */}
@@ -136,9 +143,10 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                     </div>
                 )}
                 <button
-                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-black z-10"
+                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 focus:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-black z-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={handleEditClick}
+                    aria-label="Modifier la carte"
                 >
                     ✎
                 </button>
