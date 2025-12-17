@@ -6,6 +6,7 @@ import { BoardsModule } from './boards/boards.module';
 import { ListsModule } from './lists/lists.module';
 import { CardsModule } from './cards/cards.module';
 import { LabelsModule } from './labels/labels.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
   imports: [
@@ -18,7 +19,8 @@ import { LabelsModule } from './labels/labels.module';
     BoardsModule,
     ListsModule,
     CardsModule,
-    LabelsModule, 
+    LabelsModule,
+    CommentsModule,
   ],
 })
 export class AppModule { }
