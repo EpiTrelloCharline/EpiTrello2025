@@ -116,7 +116,7 @@ export class CardsService {
     // Notify board members
     await this.notificationsService.notifyBoardMembers(
       list.boardId,
-      userId,
+      [userId],
       NotificationType.CARD_CREATED,
       `Nouvelle carte "${card.title}" créée dans "${list.title}"`,
       card.id,
@@ -188,7 +188,7 @@ export class CardsService {
       // Notify board members
       await this.notificationsService.notifyBoardMembers(
         sourceList.boardId,
-        userId,
+        [userId],
         NotificationType.CARD_MOVED,
         `Carte "${updatedCard.title}" déplacée vers "${targetList.title}"`,
         updatedCard.id,
@@ -237,7 +237,7 @@ export class CardsService {
       // Notify board members
       await this.notificationsService.notifyBoardMembers(
         card.list.boardId,
-        userId,
+        [userId],
         NotificationType.CARD_UPDATED,
         `Carte "${card.title}" mise à jour`,
         card.id,
@@ -276,7 +276,7 @@ export class CardsService {
     // Notify board members
     await this.notificationsService.notifyBoardMembers(
       card.list.boardId,
-      userId,
+      [userId],
       NotificationType.CARD_DELETED,
       `Carte "${card.title}" archivée`,
       card.id,

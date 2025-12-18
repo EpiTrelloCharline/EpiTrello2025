@@ -12,7 +12,7 @@ export interface CreateNotificationDto {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   /**
    * Create a notification for a user
@@ -49,16 +49,16 @@ export class NotificationsService {
    */
   async notifyBoardMembers(
     boardId: string,
-    actorUserId: string,
+    excludeUserIds: string[],
     type: NotificationType,
     message: string,
     entityId?: string,
   ) {
-    // Get all board members except the actor
+    // Get all board members except the excluded ones
     const boardMembers = await this.prisma.boardMember.findMany({
       where: {
         boardId,
-        userId: { not: actorUserId },
+        userId: { notIn: excludeUserIds },
       },
       select: {
         userId: true,
@@ -157,7 +157,7 @@ export class NotificationsService {
    */
   async markAllAsRead(userId: string, boardId?: string) {
     const where: any = { userId, isRead: false };
-    
+
     if (boardId) {
       where.boardId = boardId;
     }
@@ -187,7 +187,7 @@ export class NotificationsService {
    */
   async getUnreadCount(userId: string, boardId?: string) {
     const where: any = { userId, isRead: false };
-    
+
     if (boardId) {
       where.boardId = boardId;
     }

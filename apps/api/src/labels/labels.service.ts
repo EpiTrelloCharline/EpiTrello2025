@@ -83,7 +83,7 @@ export class LabelsService {
     // Notify board members
     await this.notificationsService.notifyBoardMembers(
       boardId,
-      userId,
+      [userId],
       NotificationType.LABEL_ADDED,
       `Étiquette "${label.name}" ajoutée à la carte "${card.title}"`,
       card.id,
@@ -224,7 +224,7 @@ export class LabelsService {
       // Notify board members
       await this.notificationsService.notifyBoardMembers(
         boardId,
-        userId,
+        [userId],
         NotificationType.LABEL_REMOVED,
         `Étiquette "${label.name}" retirée de la carte "${card.title}"`,
         card.id,

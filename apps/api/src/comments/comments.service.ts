@@ -2,10 +2,15 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class CommentsService {
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private notificationsService: NotificationsService,
+    ) { }
 
     async create(userId: string, cardId: string, dto: CreateCommentDto) {
         // Verify card exists and user has access (basic check, can be expanded)
@@ -21,7 +26,7 @@ export class CommentsService {
             throw new ForbiddenException('Not a board member');
         }
 
-        return this.prisma.comment.create({
+        const comment = await this.prisma.comment.create({
             data: {
                 content: dto.content,
                 cardId: cardId,
@@ -37,6 +42,17 @@ export class CommentsService {
                 },
             },
         });
+
+        // Notify board members
+        await this.notificationsService.notifyBoardMembers(
+            card.list.boardId,
+            [userId],
+            NotificationType.COMMENT_ADDED,
+            `Nouveau commentaire sur la carte "${card.title}"`,
+            card.id,
+        );
+
+        return comment;
     }
 
     async update(userId: string, id: string, dto: UpdateCommentDto) {

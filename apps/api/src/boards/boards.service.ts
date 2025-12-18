@@ -3,10 +3,15 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class BoardsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) { }
 
   async listInWorkspace(userId: string, workspaceId: string) {
     const isMember = await this.prisma.workspaceMember.findFirst({ where: { workspaceId, userId } });
@@ -173,6 +178,24 @@ export class BoardsService {
         },
       },
     });
+
+    // Notify the invited user
+    await this.notificationsService.createNotification({
+      type: NotificationType.MEMBER_ADDED,
+      message: `Vous avez été ajouté au tableau "${board.title}"`,
+      userId: invitedUser.id,
+      boardId: board.id,
+      entityId: newMember.id,
+    });
+
+    // Notify other board members
+    await this.notificationsService.notifyBoardMembers(
+      board.id,
+      [userId, invitedUser.id], // Exclude actor AND invited user (who already got a specific notification)
+      NotificationType.MEMBER_ADDED,
+      `${invitedUser.name || invitedUser.email} a rejoint le tableau "${board.title}"`,
+      newMember.id,
+    );
 
     // Return the formatted information for the UI
     return {
