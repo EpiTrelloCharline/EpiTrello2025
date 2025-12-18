@@ -8,6 +8,7 @@ import { CardsModule } from './cards/cards.module';
 import { LabelsModule } from './labels/labels.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CommentsModule } from './comments/comments.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { CommentsModule } from './comments/comments.module';
     LabelsModule,
     NotificationsModule,
     CommentsModule,
+    AttachmentsModule,
   ],
 })
 export class AppModule { }
