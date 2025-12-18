@@ -25,6 +25,7 @@ model User {
   cards         Card[]
   comments      Comment[]
   activities    Activity[]
+  notifications Notification[]
 }
 
 enum WorkspaceRole {
@@ -81,6 +82,7 @@ model Board {
   lists       List[]
   labels      Label[]
   activities  Activity[]
+  notifications Notification[]
 }
 
 model BoardMember {
@@ -165,6 +167,36 @@ model Activity {
 
   board       Board        @relation(fields: [boardId], references: [id], onDelete: Cascade)
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NotificationType {
+  CARD_CREATED
+  CARD_UPDATED
+  CARD_DELETED
+  CARD_MOVED
+  LABEL_ADDED
+  LABEL_REMOVED
+  MEMBER_ADDED
+  MEMBER_REMOVED
+  COMMENT_ADDED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  message     String
+  userId      String
+  boardId     String
+  entityId    String?          // ID of the related entity (card, label, etc.)
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board       Board            @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([boardId])
 }
 
 model Comment {

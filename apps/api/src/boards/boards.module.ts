@@ -8,8 +8,10 @@ import { BoardReadGuard } from "./guards/board-read.guard";
 import { BoardWriteGuard } from "./guards/board-write.guard";
 import { BoardAdminGuard } from "./guards/board-admin.guard";
 
+import { NotificationsModule } from "../notifications/notifications.module";
+
 @Module({
-  imports: [ActivitiesModule],
+  imports: [ActivitiesModule, NotificationsModule],
   controllers: [BoardsController],
   providers: [
     BoardsService,

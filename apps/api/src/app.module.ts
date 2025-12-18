@@ -6,6 +6,7 @@ import { BoardsModule } from './boards/boards.module';
 import { ListsModule } from './lists/lists.module';
 import { CardsModule } from './cards/cards.module';
 import { LabelsModule } from './labels/labels.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { CommentsModule } from './comments/comments.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { CommentsModule } from './comments/comments.module';
     ListsModule,
     CardsModule,
     LabelsModule,
+    NotificationsModule,
     CommentsModule,
   ],
 })
