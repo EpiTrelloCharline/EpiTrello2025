@@ -10,9 +10,10 @@ import {
   useDroppable,
   useSensors,
   useSensor,
-  PointerSensor
+  PointerSensor,
+  KeyboardSensor
 } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { api, getCardsByList, createCard, moveCard, updateCard, updateList, deleteList } from '@/lib/api';
@@ -20,6 +21,7 @@ import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardMembers } from './BoardMembers';
 import { ActivitySidebar } from './ActivitySidebar';
+import { ListSkeleton } from '@/app/components/ListSkeleton';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -50,6 +52,7 @@ export default function BoardPage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [previousCardsByList, setPreviousCardsByList] = useState<Record<string, Card[]>>({});
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,11 +76,16 @@ export default function BoardPage() {
       activationConstraint: {
         distance: 5,
       },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
   const fetchBoardData = useCallback(() => {
     if (!token || !params?.id) return;
+
+    setIsLoading(true);
 
     // Fetch Board Details (for labels/members)
     api(`/boards/${params.id}`)
@@ -103,6 +111,10 @@ export default function BoardPage() {
       .catch(err => {
         console.error(err);
         setLists([]);
+      })
+      .finally(() => {
+        // We might want to keep loading true until cards are loaded too, 
+        // but for now let's just show lists skeleton until lists are fetched
       });
   }, [token, params?.id, setBoard, setLists]);
 
@@ -112,6 +124,11 @@ export default function BoardPage() {
 
   useEffect(() => {
     async function loadCards() {
+      if (lists.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
       const results = await Promise.all(
         lists.map(async (list) => {
           let cards: Card[] = [];
@@ -137,11 +154,10 @@ export default function BoardPage() {
         map[listId] = cards;
       }
       setCardsByList(map);
+      setIsLoading(false);
     }
 
-    if (lists.length > 0) {
-      loadCards();
-    }
+    loadCards();
   }, [lists]);
 
   const ids = useMemo(() => lists.map(l => l.id), [lists]);
@@ -459,7 +475,7 @@ export default function BoardPage() {
         {/* Activity Button */}
         <button
           onClick={() => setIsActivitySidebarOpen(true)}
-          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors text-white"
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors text-white focus:outline-none focus:ring-2 focus:ring-blue-300"
           title="Voir l'historique des activités"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -495,7 +511,7 @@ export default function BoardPage() {
                           isSelected ? prev.filter(id => id !== member.userId) : [...prev, member.userId]
                         );
                       }}
-                      className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-transform ${isSelected ? 'border-blue-400 z-10 scale-110' : 'border-transparent hover:z-10 hover:scale-105'
+                      className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-300 ${isSelected ? 'border-blue-400 z-10 scale-110' : 'border-transparent hover:z-10 hover:scale-105'
                         }`}
                       style={{ backgroundColor: '#dfe1e6', color: '#172b4d' }}
                       title={member.user.name || member.user.email}
@@ -519,7 +535,7 @@ export default function BoardPage() {
                 setSelectedLabelIds([]);
                 setSelectedMemberIds([]);
               }}
-              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-white transition-colors"
+              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
               Effacer filtres
             </button>
@@ -534,24 +550,32 @@ export default function BoardPage() {
           onDragEnd={handleDragEnd}
         >
           <div className="h-full flex items-start gap-4">
-            <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
-              {lists.map(l => (
-                <Column
-                  key={l.id}
-                  id={l.id}
-                  title={l.title}
-                  cards={filteredCardsByList[l.id] ?? []}
-                  setCardsByList={setCardsByList}
-                  onDeleteCard={handleDeleteCard}
-                  onUpdateCard={handleUpdateCard}
-                  onCardClick={setSelectedCard}
-                  onUpdateList={handleUpdateList}
-                  onDeleteList={handleDeleteList}
-                  isDragDisabled={isFiltering}
-                  boardId={params.id}
-                />
-              ))}
-            </SortableContext>
+            {isLoading ? (
+              <>
+                <ListSkeleton />
+                <ListSkeleton />
+                <ListSkeleton />
+              </>
+            ) : (
+              <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
+                {lists.map(l => (
+                  <Column
+                    key={l.id}
+                    id={l.id}
+                    title={l.title}
+                    cards={filteredCardsByList[l.id] ?? []}
+                    setCardsByList={setCardsByList}
+                    onDeleteCard={handleDeleteCard}
+                    onUpdateCard={handleUpdateCard}
+                    onCardClick={setSelectedCard}
+                    onUpdateList={handleUpdateList}
+                    onDeleteList={handleDeleteList}
+                    isDragDisabled={isFiltering}
+                    boardId={params.id}
+                  />
+                ))}
+              </SortableContext>
+            )}
 
             {/* Formulaire création liste */}
             <div className="min-w-[272px] bg-white/25 rounded-xl p-3 hover:bg-white/20 transition-colors">
@@ -569,13 +593,13 @@ export default function BoardPage() {
                     }}
                   />
                   <div className="flex items-center gap-2">
-                    <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={createList}>Ajouter une liste</button>
-                    <button className="text-gray-600 hover:text-gray-800" onClick={() => setTitle('')}>✕</button>
+                    <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600" onClick={createList}>Ajouter une liste</button>
+                    <button className="text-gray-600 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 rounded" onClick={() => setTitle('')}>✕</button>
                   </div>
                 </div>
               ) : (
                 <button
-                  className="w-full text-left text-white font-medium flex items-center gap-2 px-2 py-1"
+                  className="w-full text-left text-white font-medium flex items-center gap-2 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded"
                   onClick={() => setTitle(' ')} // Hack to show input
                 >
                   <span>+</span> Ajouter une autre liste

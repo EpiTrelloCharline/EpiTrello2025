@@ -15,6 +15,7 @@ model User {
   id            String            @id @default(cuid())
   email         String            @unique
   name          String?
+  avatar        String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
@@ -22,6 +23,7 @@ model User {
   createdWorkspaces Workspace[]
   boardMembers  BoardMember[]
   cards         Card[]
+  comments      Comment[]
   activities    Activity[]
   notifications Notification[]
 }
@@ -119,6 +121,7 @@ model Card {
   
   labels      CardLabel[]
   members     User[]
+  comments    Comment[]
 }
 
 model Label {
@@ -194,4 +197,16 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([boardId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  cardId    String
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

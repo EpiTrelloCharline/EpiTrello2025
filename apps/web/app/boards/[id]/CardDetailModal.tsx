@@ -29,15 +29,22 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     const [title, setTitle] = useState(card.title);
     const [description, setDescription] = useState(card.description || '');
     const [showLabelPicker, setShowLabelPicker] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
     const labelButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
+        setIsVisible(true);
         const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape') handleClose();
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [onClose]);
+    }, []);
+
+    const handleClose = () => {
+        setIsVisible(false);
+        setTimeout(onClose, 200); // Wait for transition
+    };
 
     const handleSave = async () => {
         await onSave({ title, description });
@@ -46,14 +53,21 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     if (typeof document === 'undefined') return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[200] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-            <div className="relative bg-[#f4f5f7] rounded-lg w-full max-w-3xl mx-4 shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
+                onClick={handleClose}
+            />
+            <div
+                className={`relative bg-[#f4f5f7] rounded-lg w-full max-w-3xl mx-4 shadow-2xl flex flex-col max-h-[90vh] transform transition-all duration-200 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}
+                onClick={e => e.stopPropagation()}
+            >
 
                 {/* Close button */}
                 <button
-                    onClick={onClose}
-                    className="absolute top-2 right-2 p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors"
+                    onClick={handleClose}
+                    className="absolute top-2 right-2 p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    aria-label="Fermer"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -72,7 +86,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                     type="text"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full text-xl font-semibold bg-transparent border-2 border-transparent focus:bg-white focus:border-blue-600 rounded px-2 py-1 -ml-2 transition-colors text-[#172b4d]"
+                                    className="w-full text-xl font-semibold bg-transparent border-2 border-transparent focus:bg-white focus:border-blue-600 rounded px-2 py-1 -ml-2 transition-colors text-[#172b4d] focus:outline-none"
                                 />
                                 <p className="text-sm text-gray-500 mt-1">dans la liste <span className="underline decoration-1 cursor-pointer">À faire</span></p>
                             </div>
@@ -82,7 +96,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                     {/* Labels Section */}
                     {card.labels && card.labels.length > 0 && (
                         <div className="mb-6">
-                            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Labels</h3>
+                            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Étiquettes</h3>
                             <div className="flex flex-wrap gap-1">
                                 {card.labels.map(label => (
                                     <div
@@ -98,7 +112,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                         </div>
                     )}
 
-                    <div className="flex gap-8">
+                    <div className="flex flex-col md:flex-row gap-8">
                         {/* Main Content */}
                         <div className="flex-1">
                             {/* Description Section */}
@@ -114,18 +128,18 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         placeholder="Ajouter une description plus détaillée..."
-                                        className="w-full min-h-[108px] bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded-lg p-3 text-sm text-[#172b4d] placeholder-gray-500 transition-colors focus:ring-2 focus:ring-blue-600 resize-y"
+                                        className="w-full min-h-[108px] bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded-lg p-3 text-sm text-[#172b4d] placeholder-gray-500 transition-colors focus:ring-2 focus:ring-blue-600 resize-y focus:outline-none"
                                     />
                                     <div className="mt-2 flex gap-2">
                                         <button
                                             onClick={handleSave}
-                                            className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-medium text-sm transition-colors"
+                                            className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
                                         >
                                             Enregistrer
                                         </button>
                                         <button
-                                            onClick={onClose}
-                                            className="text-gray-700 px-4 py-1.5 rounded hover:bg-gray-200 font-medium text-sm transition-colors"
+                                            onClick={handleClose}
+                                            className="text-gray-700 px-4 py-1.5 rounded hover:bg-gray-200 font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
                                         >
                                             Annuler
                                         </button>
@@ -135,7 +149,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                         </div>
 
                         {/* Sidebar */}
-                        <div className="w-48 space-y-2">
+                        <div className="w-full md:w-48 space-y-2">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ajouter à la carte</h3>
                             <SidebarButton icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />} label="Membres" />
                             <SidebarButton
@@ -172,7 +186,7 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, { icon: React.ReactNod
         <button
             ref={ref}
             onClick={onClick}
-            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors text-left"
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors text-left focus:outline-none focus:ring-2 focus:ring-gray-400"
         >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 {icon}
@@ -181,3 +195,4 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, { icon: React.ReactNod
         </button>
     );
 });
+
