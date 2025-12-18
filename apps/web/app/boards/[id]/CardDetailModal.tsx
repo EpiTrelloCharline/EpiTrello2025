@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CardLabelPicker } from './CardLabelPicker';
+import { AttachmentUploadZone } from './AttachmentUploadZone';
+import { AttachmentsSection } from './AttachmentsSection';
+import { CoverPopup } from './CoverPopup';
 
 type Label = {
     id: string;
@@ -14,6 +17,9 @@ type Card = {
     title: string;
     description?: string;
     position: string;
+    coverId?: string | null;
+    coverColor?: string | null;
+    coverSize?: string;
     labels?: Label[];
 };
 
@@ -29,8 +35,12 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     const [title, setTitle] = useState(card.title);
     const [description, setDescription] = useState(card.description || '');
     const [showLabelPicker, setShowLabelPicker] = useState(false);
+    const [showCoverPopup, setShowCoverPopup] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
+    const [attachmentRefresh, setAttachmentRefresh] = useState(0);
+    const [hasAttachments, setHasAttachments] = useState(false);
     const labelButtonRef = useRef<HTMLButtonElement>(null);
+    const coverButtonRef = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
         setIsVisible(true);
@@ -146,20 +156,59 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Attachments Upload Zone - only show if no attachments */}
+                            {!hasAttachments && (
+                                <AttachmentUploadZone
+                                    cardId={card.id}
+                                    onUploadComplete={() => {
+                                        setAttachmentRefresh(prev => prev + 1);
+                                        setHasAttachments(true);
+                                        onLabelsUpdated?.();
+                                    }}
+                                />
+                            )}
+
+                            {/* Attachments Display */}
+                            <AttachmentsSection
+                                cardId={card.id}
+                                currentCoverId={card.coverId}
+                                refreshTrigger={attachmentRefresh}
+                                onCoverSet={() => {
+                                    onLabelsUpdated?.();
+                                }}
+                                onAttachmentsChange={(count) => setHasAttachments(count > 0)}
+                            />
                         </div>
 
                         {/* Sidebar */}
-                        <div className="w-full md:w-48 space-y-2">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ajouter à la carte</h3>
-                            <SidebarButton icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />} label="Membres" />
-                            <SidebarButton
-                                ref={labelButtonRef}
-                                icon={<path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z" />}
-                                label="Étiquettes"
-                                onClick={() => setShowLabelPicker(true)}
-                            />
-                            <SidebarButton icon={<path d="M5 13l4 4L19 7" />} label="Checklist" />
-                            <SidebarButton icon={<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} label="Dates" />
+                        <div className="w-40">
+                            <h3 className="text-xs font-semibold text-gray-600 mb-2">AJOUTER À LA CARTE</h3>
+                            <div className="space-y-2">
+                                <SidebarButton icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />} label="Membres" />
+                                <SidebarButton
+                                    ref={labelButtonRef}
+                                    icon={
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                    }
+                                    label="Étiquettes"
+                                    onClick={() => setShowLabelPicker(!showLabelPicker)}
+                                />
+                                <SidebarButton
+                                    ref={coverButtonRef}
+                                    icon={
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    }
+                                    label="Couverture"
+                                    onClick={() => setShowCoverPopup(!showCoverPopup)}
+                                />
+                                <SidebarButton icon={<path d="M5 13l4 4L19 7" />} label="Checklist" />
+                                <SidebarButton icon={<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} label="Dates" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -173,6 +222,20 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                         onClose={() => setShowLabelPicker(false)}
                         onLabelsUpdated={onLabelsUpdated}
                         anchorEl={labelButtonRef.current}
+                    />
+                )}
+                {showCoverPopup && (
+                    <CoverPopup
+                        cardId={card.id}
+                        currentCoverId={card.coverId}
+                        currentCoverColor={card.coverColor}
+                        currentCoverSize={card.coverSize}
+                        anchorEl={coverButtonRef.current}
+                        onClose={() => setShowCoverPopup(false)}
+                        onCoverSet={() => {
+                            setAttachmentRefresh(prev => prev + 1);
+                            onLabelsUpdated?.();
+                        }}
                     />
                 )}
             </div>

@@ -8,6 +8,8 @@ import ContextMenu from '@/app/components/ContextMenu';
 import { CardLabelPicker } from './CardLabelPicker';
 import { CardMemberAvatars } from './CardMemberAvatars';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 type Label = {
     id: string;
     name: string;
@@ -25,6 +27,10 @@ type Card = {
     listId: string;
     title: string;
     position: any;
+    coverId?: string | null;
+    coverUrl?: string;
+    coverColor?: string | null;
+    coverSize?: string;
     labels?: Label[];
     members?: User[];
 };
@@ -121,26 +127,68 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                     }
                 }}
             >
-                {/* Labels - compact colored bars */}
-                {card.labels && card.labels.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                        {card.labels.map(label => (
+                {/* Cover - Image or Color */}
+                {(card.coverUrl || card.coverColor) && (
+                    <div className="-m-2 mb-2">
+                        {card.coverSize === 'full' ? (
+                            // Full cover - compact background with overlay text
                             <div
-                                key={label.id}
-                                className="h-2 w-10 rounded-sm"
-                                style={{ backgroundColor: label.color }}
-                                title={label.name}
+                                className="h-16 rounded-lg flex items-end p-2"
+                                style={{
+                                    backgroundColor: card.coverColor || undefined,
+                                    backgroundImage: card.coverUrl
+                                        ? `url(${card.coverUrl.startsWith('http') ? card.coverUrl : `${API_URL}/${card.coverUrl}`})`
+                                        : undefined,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                }}
+                            >
+                                <span className="text-sm font-semibold text-white drop-shadow-lg">
+                                    {card.title}
+                                </span>
+                            </div>
+                        ) : (
+                            // Normal cover - small header band only
+                            <div
+                                className="h-8 w-full rounded-t-lg"
+                                style={{
+                                    backgroundColor: card.coverColor || undefined,
+                                    backgroundImage: card.coverUrl
+                                        ? `url(${card.coverUrl.startsWith('http') ? card.coverUrl : `${API_URL}/${card.coverUrl}`})`
+                                        : undefined,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                }}
                             />
-                        ))}
+                        )}
                     </div>
                 )}
-                <span className="text-sm text-black block min-h-[1.5em] break-words">{card.title}</span>
 
-                {/* Member Avatars */}
-                {card.members && card.members.length > 0 && (
-                    <div className="mt-2">
-                        <CardMemberAvatars members={card.members} />
-                    </div>
+                {/* Content - only show if not full cover */}
+                {card.coverSize !== 'full' && (
+                    <>
+                        {/* Labels - compact colored bars */}
+                        {card.labels && card.labels.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                                {card.labels.map(label => (
+                                    <div
+                                        key={label.id}
+                                        className="h-2 w-10 rounded-sm"
+                                        style={{ backgroundColor: label.color }}
+                                        title={label.name}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        <span className="text-sm text-black block min-h-[1.5em] break-words">{card.title}</span>
+
+                        {/* Member Avatars */}
+                        {card.members && card.members.length > 0 && (
+                            <div className="mt-2">
+                                <CardMemberAvatars members={card.members} />
+                            </div>
+                        )}
+                    </>
                 )}
                 <button
                     className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 focus:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-black z-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
