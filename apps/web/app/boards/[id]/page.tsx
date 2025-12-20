@@ -34,6 +34,8 @@ type Card = {
   position: string;
   labels?: Label[];
   members?: User[]; // Card members are User objects from the API
+  dueDate?: string | null;
+  isDone?: boolean;
 };
 
 type Board = {
