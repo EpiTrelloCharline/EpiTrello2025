@@ -10,6 +10,7 @@ import { UpdateCardDto } from "./dto/update-card.dto";
 import { ActivitiesService } from "../activities/activities.service";
 import { ActivityType, NotificationType } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
+import { BoardsGateway } from "../boards/boards.gateway";
 
 @Injectable()
 export class CardsService {
@@ -17,6 +18,7 @@ export class CardsService {
     private prisma: PrismaService,
     private activitiesService: ActivitiesService,
     private notificationsService: NotificationsService,
+    private boardsGateway: BoardsGateway,
   ) { }
 
   private async assertBoardMember(userId: string, listId: string) {
@@ -122,6 +124,12 @@ export class CardsService {
       card.id,
     );
 
+    // Emit WebSocket event
+    this.boardsGateway.emitCardCreated(list.boardId, {
+      card,
+      listId: list.id,
+    });
+
     return card;
   }
 
@@ -195,6 +203,13 @@ export class CardsService {
       );
     }
 
+    // Emit WebSocket event
+    this.boardsGateway.emitCardMoved(sourceList.boardId, {
+      card: updatedCard,
+      fromListId: sourceList.id,
+      toListId: targetListId,
+    });
+
     return updatedCard;
   }
 
@@ -244,6 +259,11 @@ export class CardsService {
       );
     }
 
+    // Emit WebSocket event
+    this.boardsGateway.emitCardUpdated(card.list.boardId, {
+      card: updatedCard,
+    });
+
     return updatedCard;
   }
 
@@ -281,6 +301,12 @@ export class CardsService {
       `Carte "${card.title}" archivée`,
       card.id,
     );
+
+    // Emit WebSocket event
+    this.boardsGateway.emitCardDeleted(card.list.boardId, {
+      cardId: card.id,
+      listId: card.listId,
+    });
 
     return updatedCard;
   }
@@ -354,6 +380,12 @@ export class CardsService {
       created.id,
       `Carte "${created.title}" dupliquée dans la liste "${card.list.title}"`
     );
+
+    // Emit WebSocket event
+    this.boardsGateway.emitCardCreated(card.list.boardId, {
+      card: created,
+      listId: card.listId,
+    });
 
     return created;
   }
