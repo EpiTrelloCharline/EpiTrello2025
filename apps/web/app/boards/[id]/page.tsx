@@ -22,6 +22,7 @@ import { CardDetailModal } from './CardDetailModal';
 import { BoardMembers } from './BoardMembers';
 import { ActivitySidebar } from './ActivitySidebar';
 import { ListSkeleton } from '@/app/components/ListSkeleton';
+import { useWebSocket } from '@/app/context/WebSocketContext';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -53,6 +54,9 @@ export default function BoardPage() {
   const [previousCardsByList, setPreviousCardsByList] = useState<Record<string, Card[]>>({});
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // WebSocket hook
+  const { socket, isConnected, joinBoard, leaveBoard } = useWebSocket();
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -121,6 +125,152 @@ export default function BoardPage() {
   useEffect(() => {
     fetchBoardData();
   }, [fetchBoardData]);
+
+  // Join board via WebSocket
+  useEffect(() => {
+    if (params?.id && isConnected) {
+      joinBoard(params.id);
+      console.log('Joined board via WebSocket:', params.id);
+
+      return () => {
+        leaveBoard(params.id);
+        console.log('Left board via WebSocket:', params.id);
+      };
+    }
+  }, [params?.id, isConnected, joinBoard, leaveBoard]);
+
+  // Listen to WebSocket events
+  useEffect(() => {
+    if (!socket) return;
+
+    // Card events
+    const handleCardCreated = (data: { card: Card; listId: string }) => {
+      console.log('Card created event:', data);
+      setCardsByList(prev => {
+        const currentCards = prev[data.listId] || [];
+        // Check if card already exists (avoid duplicates)
+        if (currentCards.some(c => c.id === data.card.id)) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [data.listId]: [...currentCards, data.card],
+        };
+      });
+    };
+
+    const handleCardMoved = (data: { card: Card; fromListId: string; toListId: string }) => {
+      console.log('Card moved event:', data);
+      setCardsByList(prev => {
+        const newState = { ...prev };
+        
+        // Remove from source list
+        if (newState[data.fromListId]) {
+          newState[data.fromListId] = newState[data.fromListId].filter(c => c.id !== data.card.id);
+        }
+        
+        // Add to target list or update if already exists
+        if (newState[data.toListId]) {
+          const existingIndex = newState[data.toListId].findIndex(c => c.id === data.card.id);
+          if (existingIndex !== -1) {
+            newState[data.toListId][existingIndex] = data.card;
+          } else {
+            newState[data.toListId] = [...newState[data.toListId], data.card];
+          }
+        } else {
+          newState[data.toListId] = [data.card];
+        }
+        
+        return newState;
+      });
+    };
+
+    const handleCardUpdated = (data: { card: Card }) => {
+      console.log('Card updated event:', data);
+      setCardsByList(prev => {
+        const listId = data.card.listId;
+        if (!prev[listId]) return prev;
+        
+        return {
+          ...prev,
+          [listId]: prev[listId].map(c => 
+            c.id === data.card.id ? { ...c, ...data.card } : c
+          ),
+        };
+      });
+      
+      // Update selected card if it's the one being edited
+      setSelectedCard(current => 
+        current?.id === data.card.id ? { ...current, ...data.card } : current
+      );
+    };
+
+    const handleCardDeleted = (data: { cardId: string; listId: string }) => {
+      console.log('Card deleted event:', data);
+      setCardsByList(prev => ({
+        ...prev,
+        [data.listId]: (prev[data.listId] || []).filter(c => c.id !== data.cardId),
+      }));
+      
+      // Close modal if deleted card was selected
+      setSelectedCard(current => 
+        current?.id === data.cardId ? null : current
+      );
+    };
+
+    // List events
+    const handleListCreated = (data: { list: List }) => {
+      console.log('List created event:', data);
+      setLists(prev => {
+        // Avoid duplicates
+        if (prev.some(l => l.id === data.list.id)) {
+          return prev;
+        }
+        return [...prev, data.list];
+      });
+      setCardsByList(prev => ({
+        ...prev,
+        [data.list.id]: [],
+      }));
+    };
+
+    const handleListUpdated = (data: { list: List }) => {
+      console.log('List updated event:', data);
+      setLists(prev => 
+        prev.map(l => l.id === data.list.id ? data.list : l)
+      );
+    };
+
+    const handleListDeleted = (data: { listId: string }) => {
+      console.log('List deleted event:', data);
+      setLists(prev => prev.filter(l => l.id !== data.listId));
+      setCardsByList(prev => {
+        const newState = { ...prev };
+        delete newState[data.listId];
+        return newState;
+      });
+    };
+
+    // Register event listeners
+    socket.on('cardCreated', handleCardCreated);
+    socket.on('cardMoved', handleCardMoved);
+    socket.on('cardUpdated', handleCardUpdated);
+    socket.on('cardDeleted', handleCardDeleted);
+    socket.on('listCreated', handleListCreated);
+    socket.on('listUpdated', handleListUpdated);
+    socket.on('listDeleted', handleListDeleted);
+
+    // Cleanup
+    return () => {
+      socket.off('cardCreated', handleCardCreated);
+      socket.off('cardMoved', handleCardMoved);
+      socket.off('cardUpdated', handleCardUpdated);
+      socket.off('cardDeleted', handleCardDeleted);
+      socket.off('listCreated', handleListCreated);
+      socket.off('listUpdated', handleListUpdated);
+      socket.off('listDeleted', handleListDeleted);
+    };
+  }, [socket]);
 
   useEffect(() => {
     async function loadCards() {

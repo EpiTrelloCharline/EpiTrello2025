@@ -4,6 +4,7 @@ import { CardLabelPicker } from './CardLabelPicker';
 import { AttachmentUploadZone } from './AttachmentUploadZone';
 import { AttachmentsSection } from './AttachmentsSection';
 import { CoverPopup } from './CoverPopup';
+import { useWebSocket } from '@/app/context/WebSocketContext';
 
 type Label = {
     id: string;
@@ -40,7 +41,16 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     const [attachmentRefresh, setAttachmentRefresh] = useState(0);
     const [hasAttachments, setHasAttachments] = useState(false);
     const labelButtonRef = useRef<HTMLButtonElement>(null);
+<<<<<<< HEAD
     const coverButtonRef = useRef<HTMLButtonElement>(null);
+=======
+    const { socket, startEditingCard, endEditingCard } = useWebSocket();
+    const [isEditingConflict, setIsEditingConflict] = useState(false);
+    const [conflictEditor, setConflictEditor] = useState<{ userName: string } | null>(null);
+
+    // Get current user info
+    const currentUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+>>>>>>> 221d9b84 ([ADD] websockets)
 
     useEffect(() => {
         setIsVisible(true);
@@ -55,6 +65,52 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
         setIsVisible(false);
         setTimeout(onClose, 200); // Wait for transition
     };
+
+    // Notify other users that we're editing this card
+    useEffect(() => {
+        if (currentUser.id && currentUser.name) {
+            startEditingCard(boardId, card.id, currentUser.id, currentUser.name || currentUser.email)
+                .then(response => {
+                    if (response.conflict && response.editor) {
+                        setIsEditingConflict(true);
+                        setConflictEditor(response.editor);
+                    }
+                });
+        }
+
+        return () => {
+            if (currentUser.id) {
+                endEditingCard(boardId, card.id, currentUser.id);
+            }
+        };
+    }, [card.id, boardId, currentUser.id, currentUser.name, currentUser.email, startEditingCard, endEditingCard]);
+
+    // Listen for other users starting to edit
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleCardEditingStarted = (data: { cardId: string; userId: string; userName: string }) => {
+            if (data.cardId === card.id && data.userId !== currentUser.id) {
+                setIsEditingConflict(true);
+                setConflictEditor({ userName: data.userName });
+            }
+        };
+
+        const handleCardEditingEnded = (data: { cardId: string }) => {
+            if (data.cardId === card.id) {
+                setIsEditingConflict(false);
+                setConflictEditor(null);
+            }
+        };
+
+        socket.on('cardEditingStarted', handleCardEditingStarted);
+        socket.on('cardEditingEnded', handleCardEditingEnded);
+
+        return () => {
+            socket.off('cardEditingStarted', handleCardEditingStarted);
+            socket.off('cardEditingEnded', handleCardEditingEnded);
+        };
+    }, [socket, card.id, currentUser.id]);
 
     const handleSave = async () => {
         await onSave({ title, description });
@@ -85,6 +141,20 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                 </button>
 
                 <div className="p-6 overflow-y-auto custom-scrollbar">
+                    {/* Conflict Warning */}
+                    {isEditingConflict && conflictEditor && (
+                        <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <p className="text-sm text-yellow-800">
+                                    <strong>{conflictEditor.userName}</strong> est en train d&apos;éditer cette carte. Vos modifications pourraient être écrasées.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Header Section */}
                     <div className="mb-6">
                         <div className="flex items-start gap-3 mb-1">
