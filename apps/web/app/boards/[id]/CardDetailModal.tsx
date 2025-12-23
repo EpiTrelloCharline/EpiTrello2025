@@ -21,6 +21,8 @@ type Card = {
     coverColor?: string | null;
     coverSize?: string;
     labels?: Label[];
+    dueDate?: string | null;
+    isDone?: boolean;
 };
 
 type CardDetailModalProps = {
@@ -34,6 +36,8 @@ type CardDetailModalProps = {
 export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdated }: CardDetailModalProps) {
     const [title, setTitle] = useState(card.title);
     const [description, setDescription] = useState(card.description || '');
+    const [dueDate, setDueDate] = useState(card.dueDate || '');
+    const [isDone, setIsDone] = useState(card.isDone || false);
     const [showLabelPicker, setShowLabelPicker] = useState(false);
     const [showCoverPopup, setShowCoverPopup] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
@@ -57,7 +61,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     };
 
     const handleSave = async () => {
-        await onSave({ title, description });
+        await onSave({ title, description, dueDate: dueDate || undefined, isDone } as any);
     };
 
     if (typeof document === 'undefined') return null;
@@ -121,6 +125,48 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                             </div>
                         </div>
                     )}
+
+                    {/* Due Date Section */}
+                    <div className="mb-6">
+                        <div className="flex items-center gap-3 mb-2">
+                            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <h3 className="font-semibold text-[#172b4d]">Date d'échéance</h3>
+                        </div>
+                        <div className="ml-9 space-y-3">
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="datetime-local"
+                                    value={dueDate ? new Date(dueDate).toISOString().slice(0, 16) : ''}
+                                    onChange={(e) => setDueDate(e.target.value ? new Date(e.target.value).toISOString() : '')}
+                                    className="flex-1 bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded-lg px-3 py-2 text-sm text-[#172b4d] transition-colors focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                                />
+                                {dueDate && (
+                                    <button
+                                        onClick={() => setDueDate('')}
+                                        className="text-gray-500 hover:text-gray-700 p-1"
+                                        title="Supprimer la date"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                            {dueDate && (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isDone}
+                                        onChange={(e) => setIsDone(e.target.checked)}
+                                        className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                                    />
+                                    <span className="text-sm text-gray-700">Marquer comme terminée</span>
+                                </label>
+                            )}
+                        </div>
+                    </div>
 
                     <div className="flex flex-col md:flex-row gap-8">
                         {/* Main Content */}

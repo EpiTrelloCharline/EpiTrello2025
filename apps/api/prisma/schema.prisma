@@ -115,6 +115,8 @@ model Card {
   description String?
   position    Decimal  @default(0)
   isArchived  Boolean  @default(false)
+  dueDate     DateTime?
+  isDone      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import ContextMenu from '@/app/components/ContextMenu';
 import { CardLabelPicker } from './CardLabelPicker';
 import { CardMemberAvatars } from './CardMemberAvatars';
+import { DueDateBadge } from './DueDateBadge';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -33,6 +34,8 @@ type Card = {
     coverSize?: string;
     labels?: Label[];
     members?: User[];
+    dueDate?: string | null;
+    isDone?: boolean;
 };
 
 type DraggableCardProps = {
@@ -182,12 +185,20 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                         )}
                         <span className="text-sm text-black block min-h-[1.5em] break-words">{card.title}</span>
 
-                        {/* Member Avatars */}
-                        {card.members && card.members.length > 0 && (
-                            <div className="mt-2">
-                                <CardMemberAvatars members={card.members} />
-                            </div>
-                        )}
+                        {/* Due Date Badge and Member Avatars Row */}
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                            {/* Due Date Badge */}
+                            {(card.dueDate || card.isDone) && (
+                                <DueDateBadge dueDate={card.dueDate} isDone={card.isDone} />
+                            )}
+
+                            {/* Member Avatars */}
+                            {card.members && card.members.length > 0 && (
+                                <div className="ml-auto">
+                                    <CardMemberAvatars members={card.members} />
+                                </div>
+                            )}
+                        </div>
                     </>
                 )}
                 <button
