@@ -70,13 +70,15 @@ enum BoardRole {
 }
 
 model Board {
-  id          String   @id @default(cuid())
-  workspaceId String
-  title       String
-  isArchived  Boolean  @default(false)
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  workspaceId      String
+  title            String
+  isArchived       Boolean  @default(false)
+  createdById      String
+  backgroundColor  String?
+  backgroundImage  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   members     BoardMember[]
