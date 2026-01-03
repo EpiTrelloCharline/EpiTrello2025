@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, IsDateString } from 'class-validator';
 
 export class UpdateCardDto {
     @IsOptional()
@@ -20,4 +20,12 @@ export class UpdateCardDto {
     @IsOptional()
     @IsBoolean()
     isArchived?: boolean;
+
+    @IsOptional()
+    @IsDateString()
+    dueDate?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    isDone?: boolean;
 }

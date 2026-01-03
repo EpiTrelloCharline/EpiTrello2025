@@ -3,6 +3,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { UpdateBoardDto } from './dto/update-board.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '@prisma/client';
 
@@ -206,6 +207,34 @@ export class BoardsService {
       role: newMember.role,
       avatar: null,
     };
+  }
+
+  /**
+   * Update board appearance (background color or image)
+   * Only ADMIN and OWNER can update board settings
+   */
+  async updateBoard(userId: string, boardId: string, dto: UpdateBoardDto) {
+    // Verify that the user is a board member with sufficient permissions
+    const member = await this.prisma.boardMember.findFirst({
+      where: { boardId, userId },
+    });
+
+    if (!member) {
+      throw new ForbiddenException('Vous n\'êtes pas membre de ce board');
+    }
+
+    if (member.role !== 'OWNER' && member.role !== 'ADMIN') {
+      throw new ForbiddenException('Seuls les propriétaires et administrateurs peuvent modifier les paramètres du board');
+    }
+
+    // Update the board
+    return this.prisma.board.update({
+      where: { id: boardId },
+      data: {
+        backgroundColor: dto.backgroundColor,
+        backgroundImage: dto.backgroundImage,
+      },
+    });
   }
 }
 

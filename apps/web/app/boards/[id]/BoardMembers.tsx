@@ -130,6 +130,11 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
     }
   };
 
+  // Guard clause if members is undefined or empty
+  if (!members || members.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flex items-center gap-3">
       {/* Members avatars */}

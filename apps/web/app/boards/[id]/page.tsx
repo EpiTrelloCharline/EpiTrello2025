@@ -23,6 +23,7 @@ import { BoardMembers } from './BoardMembers';
 import { ActivitySidebar } from './ActivitySidebar';
 import { ListSkeleton } from '@/app/components/ListSkeleton';
 import { useWebSocket } from '@/app/context/WebSocketContext';
+import BoardSettingsMenu, { getTextColor } from './BoardSettingsMenu';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -35,6 +36,8 @@ type Card = {
   position: string;
   labels?: Label[];
   members?: User[]; // Card members are User objects from the API
+  dueDate?: string | null;
+  isDone?: boolean;
 };
 
 type Board = {
@@ -43,6 +46,8 @@ type Board = {
   workspaceId: string;
   labels: Label[];
   members: Member[];
+  backgroundColor?: string | null;
+  backgroundImage?: string | null;
 };
 
 export default function BoardPage() {
@@ -163,12 +168,12 @@ export default function BoardPage() {
       console.log('Card moved event:', data);
       setCardsByList(prev => {
         const newState = { ...prev };
-        
+
         // Remove from source list
         if (newState[data.fromListId]) {
           newState[data.fromListId] = newState[data.fromListId].filter(c => c.id !== data.card.id);
         }
-        
+
         // Add to target list or update if already exists
         if (newState[data.toListId]) {
           const existingIndex = newState[data.toListId].findIndex(c => c.id === data.card.id);
@@ -180,7 +185,7 @@ export default function BoardPage() {
         } else {
           newState[data.toListId] = [data.card];
         }
-        
+
         return newState;
       });
     };
@@ -190,17 +195,17 @@ export default function BoardPage() {
       setCardsByList(prev => {
         const listId = data.card.listId;
         if (!prev[listId]) return prev;
-        
+
         return {
           ...prev,
-          [listId]: prev[listId].map(c => 
+          [listId]: prev[listId].map(c =>
             c.id === data.card.id ? { ...c, ...data.card } : c
           ),
         };
       });
-      
+
       // Update selected card if it's the one being edited
-      setSelectedCard(current => 
+      setSelectedCard(current =>
         current?.id === data.card.id ? { ...current, ...data.card } : current
       );
     };
@@ -211,9 +216,9 @@ export default function BoardPage() {
         ...prev,
         [data.listId]: (prev[data.listId] || []).filter(c => c.id !== data.cardId),
       }));
-      
+
       // Close modal if deleted card was selected
-      setSelectedCard(current => 
+      setSelectedCard(current =>
         current?.id === data.cardId ? null : current
       );
     };
@@ -236,7 +241,7 @@ export default function BoardPage() {
 
     const handleListUpdated = (data: { list: List }) => {
       console.log('List updated event:', data);
-      setLists(prev => 
+      setLists(prev =>
         prev.map(l => l.id === data.list.id ? data.list : l)
       );
     };
@@ -585,6 +590,25 @@ export default function BoardPage() {
     }
   }
 
+  async function handleBackgroundChange(backgroundColor: string | null, backgroundImage: string | null) {
+    if (!board) return;
+
+    try {
+      const response = await api(`/boards/${board.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ backgroundColor, backgroundImage }),
+      });
+
+      if (response.ok) {
+        const updatedBoard = await response.json();
+        setBoard(updatedBoard);
+      }
+    } catch (error) {
+      console.error('Failed to update board background:', error);
+      alert('Échec de la mise à jour de l\'apparence du board.');
+    }
+  }
+
   async function handleDeleteList(listId: string) {
     // Optimistic update
     const previousLists = [...lists];
@@ -607,10 +631,18 @@ export default function BoardPage() {
     }
   }
 
+  // Calculate text color based on background
+  const textColor = board?.backgroundColor ? getTextColor(board.backgroundColor) : '#ffffff';
+  const backgroundStyle = board?.backgroundColor
+    ? { background: board.backgroundColor }
+    : board?.backgroundImage
+      ? { backgroundImage: `url(${board.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+      : { backgroundColor: '#0079bf' };
+
   return (
-    <div className="h-screen flex flex-col bg-[#0079bf]">
-      {/* Header du board */}
-      <div className="h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 text-white gap-4">
+    <div className="h-screen flex flex-col" style={backgroundStyle}>
+      {/* Board Header */}
+      <div className="h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 gap-4" style={{ color: textColor }}>
         <div className="font-bold text-lg">Epi Trello</div>
 
         {/* Board Members & Invite */}
@@ -625,8 +657,9 @@ export default function BoardPage() {
         {/* Activity Button */}
         <button
           onClick={() => setIsActivitySidebarOpen(true)}
-          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors text-white focus:outline-none focus:ring-2 focus:ring-blue-300"
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
           title="Voir l'historique des activités"
+          style={{ color: textColor }}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -634,12 +667,23 @@ export default function BoardPage() {
           <span className="hidden md:inline">Historique</span>
         </button>
 
+        {/* Board Settings Menu */}
+        {board && (
+          <BoardSettingsMenu
+            boardId={board.id}
+            currentBackgroundColor={board.backgroundColor}
+            currentBackgroundImage={board.backgroundImage}
+            onBackgroundChange={handleBackgroundChange}
+          />
+        )}
+
         <div className="flex flex-wrap items-center gap-4 flex-1">
           {/* Search Bar */}
           <input
             type="text"
             placeholder="Rechercher une carte..."
-            className="bg-white/20 text-white placeholder-white/70 px-3 py-1.5 rounded text-sm border border-transparent focus:border-blue-300 focus:outline-none focus:bg-white/30 transition-all"
+            className="bg-white/20 placeholder-white/70 px-3 py-1.5 rounded text-sm border border-transparent focus:border-blue-300 focus:outline-none focus:bg-white/30 transition-all"
+            style={{ color: textColor }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -685,7 +729,8 @@ export default function BoardPage() {
                 setSelectedLabelIds([]);
                 setSelectedMemberIds([]);
               }}
-              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
+              style={{ color: textColor }}
             >
               Effacer filtres
             </button>
