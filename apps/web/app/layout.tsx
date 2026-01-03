@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { WebSocketProvider } from './context/WebSocketContext';
 
 export const metadata: Metadata = {
   title: 'Epi Trello - Workspaces',
@@ -13,7 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <WebSocketProvider>
+          {children}
+        </WebSocketProvider>
+      </body>
     </html>
   );
 }

@@ -1,10 +1,14 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../prisma.service';
+import { BoardsGateway } from '../boards/boards.gateway';
 
 @Injectable()
 export class ListsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private boardsGateway: BoardsGateway,
+  ) { }
 
   private async assertBoardMember(userId: string, boardId: string) {
     const m = await this.prisma.boardMember.findFirst({ where: { boardId, userId } });
@@ -36,13 +40,23 @@ export class ListsService {
       else position = (Number(lists[idx].position) + Number(lists[idx + 1].position)) / 2;
     }
 
-    return this.prisma.list.create({ data: { boardId, title, position } });
+    const list = await this.prisma.list.create({ data: { boardId, title, position } });
+
+    // Emit WebSocket event
+    this.boardsGateway.emitListCreated(boardId, { list });
+
+    return list;
   }
 
   async move(userId: string, listId: string, boardId: string, newPosition: number) {
     await this.assertBoardMember(userId, boardId);
 
-    return this.prisma.list.update({ where: { id: listId }, data: { position: newPosition } });
+    const list = await this.prisma.list.update({ where: { id: listId }, data: { position: newPosition } });
+
+    // Emit WebSocket event
+    this.boardsGateway.emitListUpdated(boardId, { list });
+
+    return list;
   }
 
   async update(userId: string, listId: string, title: string) {
@@ -52,7 +66,12 @@ export class ListsService {
 
     await this.assertBoardMember(userId, list.boardId);
 
-    return this.prisma.list.update({ where: { id: listId }, data: { title } });
+    const updatedList = await this.prisma.list.update({ where: { id: listId }, data: { title } });
+
+    // Emit WebSocket event
+    this.boardsGateway.emitListUpdated(list.boardId, { list: updatedList });
+
+    return updatedList;
   }
 
   async delete(userId: string, listId: string) {
@@ -63,7 +82,12 @@ export class ListsService {
     await this.assertBoardMember(userId, list.boardId);
 
     // Archive the list instead of hard delete
-    return this.prisma.list.update({ where: { id: listId }, data: { isArchived: true } });
+    const archivedList = await this.prisma.list.update({ where: { id: listId }, data: { isArchived: true } });
+
+    // Emit WebSocket event
+    this.boardsGateway.emitListDeleted(list.boardId, { listId });
+
+    return archivedList;
   }
 }
 
