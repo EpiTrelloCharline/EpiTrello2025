@@ -6,6 +6,9 @@ import { AttachmentsSection } from './AttachmentsSection';
 import { CoverPopup } from './CoverPopup';
 import { ActivitySection } from './ActivitySection';
 import { useWebSocket } from '@/app/context/WebSocketContext';
+import { getChecklists } from '@/lib/api';
+import { ChecklistSection } from './ChecklistSection';
+import { ChecklistPopover } from './ChecklistPopover';
 
 type Label = {
     id: string;
@@ -50,6 +53,22 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     const { socket, startEditingCard, endEditingCard } = useWebSocket();
     const [isEditingConflict, setIsEditingConflict] = useState(false);
     const [conflictEditor, setConflictEditor] = useState<{ userName: string } | null>(null);
+    const [checklists, setChecklists] = useState<any[]>([]);
+    const [showChecklistPopover, setShowChecklistPopover] = useState(false);
+    const checklistButtonRef = useRef<HTMLButtonElement>(null);
+
+    const fetchChecklists = async () => {
+        try {
+            const data = await getChecklists(card.id);
+            setChecklists(data);
+        } catch (error) {
+            console.error('Failed to fetch checklists:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchChecklists();
+    }, [card.id]);
 
     // Get current user info
     const currentUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
@@ -195,22 +214,27 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                     )}
 
                     {/* Due Date Section */}
-                    <div className="mb-6">
-                        <div className="flex items-center gap-3 mb-2">
-                            <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <h3 className="font-semibold text-[#172b4d]">Date d'échéance</h3>
-                        </div>
-                        <div className="ml-9 space-y-3">
-                            <div className="flex items-center gap-3">
-                                <input
-                                    type="datetime-local"
-                                    value={dueDate ? new Date(dueDate).toISOString().slice(0, 16) : ''}
-                                    onChange={(e) => setDueDate(e.target.value ? new Date(e.target.value).toISOString() : '')}
-                                    className="flex-1 bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded-lg px-3 py-2 text-sm text-[#172b4d] transition-colors focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                                />
-                                {dueDate && (
+                    {dueDate && (
+                        <div className="mb-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <h3 className="font-semibold text-[#172b4d]">Date d'échéance</h3>
+                            </div>
+                            <div className="ml-9 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="datetime-local"
+                                        value={dueDate ? new Date(dueDate).toISOString().slice(0, 16) : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value ? new Date(e.target.value).toISOString() : '';
+                                            setDueDate(val);
+                                            // Handle manual clear from input if browser supports it
+                                            if (!val) setDueDate('');
+                                        }}
+                                        className="flex-1 bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded-lg px-3 py-2 text-sm text-[#172b4d] transition-colors focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                                    />
                                     <button
                                         onClick={() => setDueDate('')}
                                         className="text-gray-500 hover:text-gray-700 p-1"
@@ -220,9 +244,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     </button>
-                                )}
-                            </div>
-                            {dueDate && (
+                                </div>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
@@ -232,9 +254,9 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                     />
                                     <span className="text-sm text-gray-700">Marquer comme terminée</span>
                                 </label>
-                            )}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="flex flex-col md:flex-row gap-8">
                         {/* Main Content */}
@@ -269,6 +291,17 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                         </button>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Checklists Section */}
+                            <div className="mb-6">
+                                {checklists.map(checklist => (
+                                    <ChecklistSection
+                                        key={checklist.id}
+                                        checklist={checklist}
+                                        onUpdate={fetchChecklists}
+                                    />
+                                ))}
                             </div>
 
                             {/* Attachments Upload Zone - only show if no attachments */}
@@ -320,8 +353,35 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                     label="Couverture"
                                     onClick={() => setShowCoverPopup(!showCoverPopup)}
                                 />
-                                <SidebarButton icon={<path d="M5 13l4 4L19 7" />} label="Checklist" />
-                                <SidebarButton icon={<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} label="Dates" />
+                                <SidebarButton
+                                    ref={checklistButtonRef}
+                                    icon={
+                                        <>
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2" fill="none" />
+                                            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4" />
+                                        </>
+                                    }
+                                    label="Checklist"
+                                    onClick={() => setShowChecklistPopover(!showChecklistPopover)}
+                                />
+                                <SidebarButton
+                                    icon={
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <rect x="4" y="5" width="16" height="16" rx="2" strokeWidth="2" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 3v4M8 3v4M4 11h16" />
+                                        </svg>
+                                    }
+                                    label="Dates"
+                                    onClick={() => {
+                                        if (!dueDate) {
+                                            // Set default due date to tomorrow same time
+                                            const tomorrow = new Date();
+                                            tomorrow.setDate(tomorrow.getDate() + 1);
+                                            tomorrow.setMinutes(0);
+                                            setDueDate(tomorrow.toISOString());
+                                        }
+                                    }}
+                                />
                             </div>
                         </div>
                     </div>
@@ -360,6 +420,14 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                             setAttachmentRefresh(prev => prev + 1);
                             onLabelsUpdated?.();
                         }}
+                    />
+                )}
+                {showChecklistPopover && (
+                    <ChecklistPopover
+                        cardId={card.id}
+                        anchorEl={checklistButtonRef.current}
+                        onClose={() => setShowChecklistPopover(false)}
+                        onChecklistCreated={fetchChecklists}
                     />
                 )}
             </div>

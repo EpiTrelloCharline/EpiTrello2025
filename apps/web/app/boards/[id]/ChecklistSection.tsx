@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import type { Checklist, ChecklistItem } from '../../api/checklists';
-import {
-    updateChecklist,
-    deleteChecklist,
-    createChecklistItem,
-    updateChecklistItem,
-    deleteChecklistItem,
-} from '../../api/checklists';
+import { ChecklistItem } from './ChecklistItem';
+import { updateChecklist, deleteChecklist, createChecklistItem } from '@/lib/api';
 
 type ChecklistSectionProps = {
-    checklist: Checklist;
+    checklist: {
+        id: string;
+        title: string;
+        items: any[];
+    };
     onUpdate: () => void;
 };
 
@@ -17,207 +15,163 @@ export function ChecklistSection({ checklist, onUpdate }: ChecklistSectionProps)
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [title, setTitle] = useState(checklist.title);
     const [newItemContent, setNewItemContent] = useState('');
-    const [editingItemId, setEditingItemId] = useState<string | null>(null);
-    const [editingItemContent, setEditingItemContent] = useState('');
+    const [isAddingItem, setIsAddingItem] = useState(false);
 
     // Calculate progress
-    const totalItems = checklist.items.length;
-    const checkedItems = checklist.items.filter((item) => item.checked).length;
-    const progress = totalItems > 0 ? (checkedItems / totalItems) * 100 : 0;
+    const totalItems = checklist.items?.length || 0;
+    const checkedItems = checklist.items?.filter((item: any) => item.checked).length || 0;
+    const progress = totalItems === 0 ? 0 : Math.round((checkedItems / totalItems) * 100);
 
-    const handleTitleSave = async () => {
-        if (title.trim() && title !== checklist.title) {
-            try {
-                await updateChecklist(checklist.id, title.trim());
-                onUpdate();
-            } catch (error) {
-                console.error('Failed to update checklist title:', error);
-            }
-        }
+    const handleUpdateTitle = async () => {
+        if (title.trim() === '') return;
         setIsEditingTitle(false);
+        if (title === checklist.title) return;
+
+        try {
+            await updateChecklist(checklist.id, { title });
+            onUpdate();
+        } catch (error) {
+            setTitle(checklist.title);
+            console.error('Failed to update checklist title:', error);
+        }
     };
 
     const handleDeleteChecklist = async () => {
-        if (confirm('Êtes-vous sûr de vouloir supprimer cette checklist ?')) {
-            try {
-                await deleteChecklist(checklist.id);
-                onUpdate();
-            } catch (error) {
-                console.error('Failed to delete checklist:', error);
-            }
-        }
-    };
-
-    const handleAddItem = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newItemContent.trim()) {
-            try {
-                await createChecklistItem(checklist.id, newItemContent.trim());
-                setNewItemContent('');
-                onUpdate();
-            } catch (error) {
-                console.error('Failed to create checklist item:', error);
-            }
-        }
-    };
-
-    const handleToggleItem = async (item: ChecklistItem) => {
+        if (!confirm('Voulez-vous vraiment supprimer cette checklist ?')) return;
         try {
-            await updateChecklistItem(item.id, { checked: !item.checked });
+            await deleteChecklist(checklist.id);
             onUpdate();
         } catch (error) {
-            console.error('Failed to toggle checklist item:', error);
+            console.error('Failed to delete checklist:', error);
         }
     };
 
-    const handleStartEditItem = (item: ChecklistItem) => {
-        setEditingItemId(item.id);
-        setEditingItemContent(item.content);
+    const handleInitializeAddItem = () => {
+        setIsAddingItem(true);
     };
 
-    const handleSaveItemEdit = async (itemId: string) => {
-        if (editingItemContent.trim()) {
-            try {
-                await updateChecklistItem(itemId, { content: editingItemContent.trim() });
-                setEditingItemId(null);
-                onUpdate();
-            } catch (error) {
-                console.error('Failed to update checklist item:', error);
-            }
-        }
-    };
+    const handleAddItem = async () => {
+        if (newItemContent.trim() === '') return;
 
-    const handleDeleteItem = async (itemId: string) => {
         try {
-            await deleteChecklistItem(itemId);
+            await createChecklistItem(checklist.id, newItemContent);
+            setNewItemContent('');
+            // Keep adding mode open to add multiple items quickly
             onUpdate();
         } catch (error) {
-            console.error('Failed to delete checklist item:', error);
+            console.error('Failed to add item:', error);
         }
     };
 
     return (
         <div className="mb-6">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-3">
+            <div className="flex items-center gap-3 mb-2 group">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                {isEditingTitle ? (
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        onBlur={handleTitleSave}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleTitleSave();
-                            if (e.key === 'Escape') {
-                                setTitle(checklist.title);
-                                setIsEditingTitle(false);
-                            }
-                        }}
-                        className="flex-1 text-base font-semibold bg-white border-2 border-blue-600 rounded px-2 py-1 text-[#172b4d] focus:outline-none"
-                        autoFocus
-                    />
-                ) : (
-                    <h3
-                        className="flex-1 font-semibold text-[#172b4d] cursor-pointer hover:bg-gray-100 rounded px-2 py-1 -ml-2"
-                        onClick={() => setIsEditingTitle(true)}
+
+                <div className="flex-1 flex justify-between items-center">
+                    {isEditingTitle ? (
+                        <div className="flex-1 mr-2">
+                            <input
+                                autoFocus
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                onBlur={handleUpdateTitle}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleUpdateTitle();
+                                    if (e.key === 'Escape') {
+                                        setIsEditingTitle(false);
+                                        setTitle(checklist.title);
+                                    }
+                                }}
+                                className="w-full font-semibold text-[#172b4d] bg-white border border-blue-600 rounded px-2 py-1 outline-none"
+                            />
+                        </div>
+                    ) : (
+                        <h3
+                            onClick={() => setIsEditingTitle(true)}
+                            className="font-semibold text-[#172b4d] cursor-pointer hover:bg-gray-100 rounded px-2 py-1 -ml-2 transition-colors"
+                        >
+                            {checklist.title}
+                        </h3>
+                    )}
+
+                    <button
+                        onClick={handleDeleteChecklist}
+                        className="opacity-0 group-hover:opacity-100 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm transition-all focus:opacity-100"
                     >
-                        {checklist.title}
-                    </h3>
-                )}
-                <button
-                    onClick={handleDeleteChecklist}
-                    className="text-gray-500 hover:text-red-600 px-2 py-1 text-sm transition-colors"
-                    title="Supprimer la checklist"
-                >
-                    Supprimer
-                </button>
+                        Supprimer
+                    </button>
+                </div>
             </div>
 
             {/* Progress Bar */}
-            <div className="ml-9 mb-3">
-                <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs text-gray-600 font-medium">{Math.round(progress)}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div className="ml-9 mb-4 flex items-center gap-3">
+                <span className="text-xs text-gray-500 w-8">{progress}%</span>
+                <div className="flex-1 h-2 bg-[#091e420f] rounded-full overflow-hidden">
                     <div
-                        className="bg-blue-600 h-full rounded-full transition-all duration-500 ease-out"
+                        className={`h-full transition-all duration-300 ease-in-out rounded-full ${progress === 100 ? 'bg-[#1f845a]' : 'bg-[#579dff]'}`}
                         style={{ width: `${progress}%` }}
                     />
                 </div>
             </div>
 
             {/* Items List */}
-            <div className="ml-9 space-y-2">
-                {checklist.items.map((item) => (
-                    <div
+            <div className="ml-9 mb-2 space-y-1">
+                {checklist.items?.map((item: any) => (
+                    <ChecklistItem
                         key={item.id}
-                        className="flex items-start gap-2 group hover:bg-gray-50 rounded p-1 -ml-1"
-                    >
-                        <input
-                            type="checkbox"
-                            checked={item.checked}
-                            onChange={() => handleToggleItem(item)}
-                            className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-600 cursor-pointer"
-                        />
-                        {editingItemId === item.id ? (
-                            <input
-                                type="text"
-                                value={editingItemContent}
-                                onChange={(e) => setEditingItemContent(e.target.value)}
-                                onBlur={() => handleSaveItemEdit(item.id)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveItemEdit(item.id);
-                                    if (e.key === 'Escape') {
-                                        setEditingItemId(null);
-                                        setEditingItemContent('');
-                                    }
-                                }}
-                                className="flex-1 bg-white border-2 border-blue-600 rounded px-2 py-1 text-sm text-[#172b4d] focus:outline-none"
-                                autoFocus
-                            />
-                        ) : (
-                            <span
-                                className={`flex-1 text-sm cursor-pointer rounded px-2 py-1 -ml-2 ${item.checked ? 'line-through text-gray-500' : 'text-[#172b4d]'
-                                    }`}
-                                onClick={() => handleStartEditItem(item)}
-                            >
-                                {item.content}
-                            </span>
-                        )}
-                        <button
-                            onClick={() => handleDeleteItem(item.id)}
-                            className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 transition-all p-1"
-                            title="Supprimer l'item"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                ))}
-
-                {/* Add New Item */}
-                <form onSubmit={handleAddItem} className="flex items-center gap-2 mt-2">
-                    <button
-                        type="submit"
-                        className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
-                        disabled={!newItemContent.trim()}
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                    </button>
-                    <input
-                        type="text"
-                        value={newItemContent}
-                        onChange={(e) => setNewItemContent(e.target.value)}
-                        placeholder="Add an item"
-                        className="flex-1 bg-transparent hover:bg-gray-100 focus:bg-white border-none rounded px-2 py-1 text-sm text-[#172b4d] placeholder-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        item={item}
+                        onUpdate={onUpdate}
                     />
-                </form>
+                ))}
+            </div>
+
+            {/* Add Item Form */}
+            <div className="ml-9">
+                {!isAddingItem ? (
+                    <button
+                        onClick={handleInitializeAddItem}
+                        className="bg-gray-200 hover:bg-gray-300 text-[#172b4d] px-3 py-1.5 rounded text-sm transition-colors"
+                    >
+                        Ajouter un élément
+                    </button>
+                ) : (
+                    <div className="mb-2">
+                        <textarea
+                            autoFocus
+                            placeholder="Ajouter un élément"
+                            value={newItemContent}
+                            onChange={(e) => setNewItemContent(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddItem();
+                                }
+                                if (e.key === 'Escape') setIsAddingItem(false);
+                            }}
+                            className="w-full bg-white border border-blue-600 rounded px-3 py-2 text-sm outline-none resize-none shadow-sm mb-2"
+                            rows={2}
+                        />
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleAddItem}
+                                className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled={!newItemContent.trim()}
+                            >
+                                Ajouter
+                            </button>
+                            <button
+                                onClick={() => setIsAddingItem(false)}
+                                className="text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-200"
+                            >
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
