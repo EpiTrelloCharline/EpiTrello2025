@@ -9,6 +9,7 @@ import { LabelsModule } from './labels/labels.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CommentsModule } from './comments/comments.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { ChecklistsModule } from './checklists/checklists.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AttachmentsModule } from './attachments/attachments.module';
     NotificationsModule,
     CommentsModule,
     AttachmentsModule,
+    ChecklistsModule,
   ],
 })
 export class AppModule { }

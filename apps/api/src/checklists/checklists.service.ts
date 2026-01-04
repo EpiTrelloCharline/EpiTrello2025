@@ -115,6 +115,23 @@ export class ChecklistsService {
     }
 
     /**
+     * Get all checklists for a card
+     */
+    async getChecklists(userId: string, cardId: string) {
+        await this.assertCardAccess(userId, cardId);
+
+        return this.prisma.checklist.findMany({
+            where: { cardId },
+            include: {
+                items: {
+                    orderBy: { position: 'asc' },
+                },
+            },
+            orderBy: { position: 'asc' },
+        });
+    }
+
+    /**
      * Create a new checklist for a card
      */
     async createChecklist(userId: string, cardId: string, dto: CreateChecklistDto) {
