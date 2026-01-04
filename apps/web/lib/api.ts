@@ -69,3 +69,56 @@ export async function deleteList(listId: string) {
   });
   return res.json();
 }
+
+// Checklists
+export async function getChecklists(cardId: string) {
+  const res = await api(`/cards/${cardId}/checklists`);
+  return res.json();
+}
+
+export async function createChecklist(cardId: string, title: string) {
+  const res = await api(`/cards/${cardId}/checklists`, {
+    method: 'POST',
+    body: JSON.stringify({ title }),
+  });
+  return res.json();
+}
+
+export async function updateChecklist(checklistId: string, data: { title?: string }) {
+  const res = await api(`/checklists/${checklistId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function deleteChecklist(checklistId: string) {
+  const res = await api(`/checklists/${checklistId}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
+
+// Checklist Items
+export async function createChecklistItem(checklistId: string, content: string) {
+  const res = await api(`/checklists/${checklistId}/items`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+  return res.json();
+}
+
+export async function updateChecklistItem(itemId: string, data: { content?: string; checked?: boolean }) {
+  const res = await api(`/checklist-items/${itemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function deleteChecklistItem(itemId: string) {
+  const res = await api(`/checklist-items/${itemId}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
