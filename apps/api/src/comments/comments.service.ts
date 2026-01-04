@@ -12,6 +12,35 @@ export class CommentsService {
         private notificationsService: NotificationsService,
     ) { }
 
+    async findAll(userId: string, cardId: string) {
+        // Verify card exists and user has access
+        const card = await this.prisma.card.findUnique({
+            where: { id: cardId },
+            include: { list: { include: { board: { include: { members: true } } } } },
+        });
+
+        if (!card) throw new NotFoundException('Card not found');
+
+        const isMember = card.list.board.members.some((m) => m.userId === userId);
+        if (!isMember && card.list.board.createdById !== userId) {
+            throw new ForbiddenException('Not a board member');
+        }
+
+        return this.prisma.comment.findMany({
+            where: { cardId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true,
+                    },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
     async create(userId: string, cardId: string, dto: CreateCommentDto) {
         // Verify card exists and user has access (basic check, can be expanded)
         const card = await this.prisma.card.findUnique({

@@ -4,6 +4,7 @@ import { CardLabelPicker } from './CardLabelPicker';
 import { AttachmentUploadZone } from './AttachmentUploadZone';
 import { AttachmentsSection } from './AttachmentsSection';
 import { CoverPopup } from './CoverPopup';
+import { ActivitySection } from './ActivitySection';
 import { useWebSocket } from '@/app/context/WebSocketContext';
 
 type Label = {
@@ -45,16 +46,13 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     const [attachmentRefresh, setAttachmentRefresh] = useState(0);
     const [hasAttachments, setHasAttachments] = useState(false);
     const labelButtonRef = useRef<HTMLButtonElement>(null);
-<<<<<<< HEAD
     const coverButtonRef = useRef<HTMLButtonElement>(null);
-=======
     const { socket, startEditingCard, endEditingCard } = useWebSocket();
     const [isEditingConflict, setIsEditingConflict] = useState(false);
     const [conflictEditor, setConflictEditor] = useState<{ userName: string } | null>(null);
 
     // Get current user info
     const currentUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
->>>>>>> 221d9b84 ([ADD] websockets)
 
     useEffect(() => {
         setIsVisible(true);
@@ -327,6 +325,16 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                             </div>
                         </div>
                     </div>
+
+                    {/* Activity Section */}
+                    <ActivitySection
+                        cardId={card.id}
+                        currentUser={{
+                            id: currentUser.id,
+                            name: currentUser.name || currentUser.email,
+                            avatar: currentUser.avatar,
+                        }}
+                    />
                 </div>
 
                 {/* Label Picker */}
