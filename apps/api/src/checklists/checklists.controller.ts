@@ -2,6 +2,7 @@ import {
     Body,
     Controller,
     Delete,
+    Get,
     Param,
     Patch,
     Post,
@@ -19,6 +20,18 @@ import { UpdateChecklistItemDto } from './dto/update-checklist-item.dto';
 @Controller()
 export class ChecklistsController {
     constructor(private readonly checklistsService: ChecklistsService) { }
+
+    /**
+     * GET /cards/:id/checklists
+     * Get all checklists for a card
+     */
+    @Get('cards/:id/checklists')
+    getChecklists(
+        @Param('id') cardId: string,
+        @Request() req: any,
+    ) {
+        return this.checklistsService.getChecklists(req.user.id, cardId);
+    }
 
     /**
      * POST /cards/:id/checklists
