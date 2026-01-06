@@ -122,3 +122,9 @@ export async function deleteChecklistItem(itemId: string) {
   });
   return res.json();
 }
+
+export async function searchBoard(boardId: string, query: string) {
+  const params = new URLSearchParams({ boardId, q: query });
+  const res = await api(`/search?${params.toString()}`);
+  return res.json();
+}

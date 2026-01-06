@@ -10,6 +10,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { CommentsModule } from './comments/comments.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { ChecklistsModule } from './checklists/checklists.module';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ChecklistsModule } from './checklists/checklists.module';
     CommentsModule,
     AttachmentsModule,
     ChecklistsModule,
+    SearchModule,
   ],
 })
 export class AppModule { }
