@@ -24,6 +24,7 @@ import { ActivitySidebar } from './ActivitySidebar';
 import { ListSkeleton } from '@/app/components/ListSkeleton';
 import { useWebSocket } from '@/app/context/WebSocketContext';
 import BoardSettingsMenu, { getTextColor } from './BoardSettingsMenu';
+import { SearchModal } from '@/app/components/SearchModal';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -71,6 +72,7 @@ export default function BoardPage() {
 
   // Activity Sidebar State
   const [isActivitySidebarOpen, setIsActivitySidebarOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0;
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -642,7 +644,7 @@ export default function BoardPage() {
   return (
     <div className="h-screen flex flex-col" style={backgroundStyle}>
       {/* Board Header */}
-      <div className="h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 gap-4" style={{ color: textColor }}>
+      <div className="relative z-50 h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 gap-4" style={{ color: textColor }}>
         <div className="font-bold text-lg">Epi Trello</div>
 
         {/* Board Members & Invite */}
@@ -687,6 +689,10 @@ export default function BoardPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+
+
+
+
 
 
 
@@ -833,6 +839,24 @@ export default function BoardPage() {
           boardId={params.id}
           isOpen={isActivitySidebarOpen}
           onClose={() => setIsActivitySidebarOpen(false)}
+        />
+      )}
+
+      {isSearchModalOpen && params?.id && (
+        <SearchModal
+          boardId={params.id}
+          onClose={() => setIsSearchModalOpen(false)}
+          onCardClick={(cardId) => {
+            const cardLoc = findCardLocation(cardId, cardsByList);
+            if (cardLoc) {
+              const card = cardsByList[cardLoc.listId][cardLoc.index];
+              setSelectedCard(card);
+            } else {
+              api(`/cards/${cardId}`).then(r => r.json()).then(card => {
+                if (card && card.id) setSelectedCard(card);
+              });
+            }
+          }}
         />
       )}
     </div>

@@ -234,6 +234,10 @@ export class BoardsService {
         backgroundColor: dto.backgroundColor,
         backgroundImage: dto.backgroundImage,
       },
+      include: {
+        members: { include: { user: true } },
+        labels: true,
+      },
     });
   }
 }
