@@ -128,3 +128,36 @@ export async function searchBoard(boardId: string, query: string) {
   const res = await api(`/search?${params.toString()}`);
   return res.json();
 }
+
+// Archive/Restore/Delete Permanent
+export async function getArchivedLists(boardId: string) {
+  const res = await api(`/lists?boardId=${boardId}&archived=true`);
+  return res.json();
+}
+
+export async function getArchivedCards(boardId: string) {
+  const res = await api(`/cards/archived?boardId=${boardId}`);
+  return res.json();
+}
+
+export async function deleteCardPermanent(cardId: string) {
+  const res = await api(`/cards/${cardId}/permanent`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
+
+export async function deleteListPermanent(listId: string) {
+  const res = await api(`/lists/${listId}/permanent`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
+
+export async function restoreList(listId: string, title?: string) {
+  const res = await api(`/lists/${listId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title, isArchived: false }),
+  });
+  return res.json();
+}

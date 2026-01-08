@@ -1,7 +1,12 @@
-import { IsString, MinLength } from 'class-validator';
+import { IsString, MinLength, IsOptional, IsBoolean } from 'class-validator';
 
 export class UpdateListDto {
+    @IsOptional()
     @IsString()
     @MinLength(1)
-    title: string;
+    title?: string;
+
+    @IsOptional()
+    @IsBoolean()
+    isArchived?: boolean;
 }

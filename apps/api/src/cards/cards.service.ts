@@ -311,6 +311,46 @@ export class CardsService {
     return updatedCard;
   }
 
+  async listArchived(userId: string, boardId: string) {
+    // Check if user is board member
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      include: { members: true },
+    });
+    if (!board) throw new NotFoundException("Board not found");
+
+    const isMember = board.members.some((m) => m.userId === userId);
+    if (!isMember && board.createdById !== userId) {
+      throw new ForbiddenException("Not a board member");
+    }
+
+    return this.prisma.card.findMany({
+      where: {
+        list: { boardId },
+        isArchived: true,
+      },
+      include: {
+        list: true,
+        labels: { include: { label: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+
+  async deletePermanent(userId: string, cardId: string) {
+    const card = await this.assertCardAccess(userId, cardId);
+
+    await this.prisma.card.delete({ where: { id: cardId } });
+
+    // Emit WebSocket event
+    this.boardsGateway.emitCardDeleted(card.list.boardId, {
+      cardId: card.id,
+      listId: card.listId,
+    });
+
+    return { success: true };
+  }
+
   /**
    * Duplicate a card: copy title, description, labels and append to the end of the same list
    */

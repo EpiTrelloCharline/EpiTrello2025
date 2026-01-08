@@ -18,8 +18,8 @@ export class ListsController {
 
   @UseGuards(BoardReadGuard)
   @Get()
-  list(@Query('boardId') boardId: string, @Request() req: any) {
-    return this.svc.list(boardId, req.user.id);
+  list(@Query('boardId') boardId: string, @Query('archived') archived: string, @Request() req: any) {
+    return this.svc.list(boardId, req.user.id, archived === 'true');
   }
 
   @UseGuards(BoardWriteGuard)
@@ -37,13 +37,19 @@ export class ListsController {
   @UseGuards(BoardWriteGuard)
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateListDto, @Request() req: any) {
-    return this.svc.update(req.user.id, id, dto.title);
+    return this.svc.update(req.user.id, id, dto.title, dto.isArchived);
   }
 
   @UseGuards(BoardWriteGuard)
   @Delete(':id')
   delete(@Param('id') id: string, @Request() req: any) {
     return this.svc.delete(req.user.id, id);
+  }
+
+  @UseGuards(BoardWriteGuard)
+  @Delete(':id/permanent')
+  deletePermanent(@Param('id') id: string, @Request() req: any) {
+    return this.svc.deletePermanent(req.user.id, id);
   }
 }
 
