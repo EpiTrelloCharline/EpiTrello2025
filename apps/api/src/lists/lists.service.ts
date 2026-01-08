@@ -16,11 +16,11 @@ export class ListsService {
     if (!m) throw new ForbiddenException('Not a board member');
   }
 
-  async list(boardId: string, userId: string) {
+  async list(boardId: string, userId: string, archived: boolean = false) {
     await this.assertBoardMember(userId, boardId);
 
     return this.prisma.list.findMany({
-      where: { boardId, isArchived: false },
+      where: { boardId, isArchived: archived },
       orderBy: { position: 'asc' },
     });
   }
@@ -59,14 +59,20 @@ export class ListsService {
     return list;
   }
 
-  async update(userId: string, listId: string, title: string) {
+  async update(userId: string, listId: string, title?: string, isArchived?: boolean) {
     // Get the list to find its boardId
     const list = await this.prisma.list.findUnique({ where: { id: listId } });
     if (!list) throw new ForbiddenException('List not found');
 
     await this.assertBoardMember(userId, list.boardId);
 
-    const updatedList = await this.prisma.list.update({ where: { id: listId }, data: { title } });
+    const updatedList = await this.prisma.list.update({
+      where: { id: listId },
+      data: {
+        title: title ?? undefined,
+        isArchived: isArchived ?? undefined
+      }
+    });
 
     // Emit WebSocket event
     this.boardsGateway.emitListUpdated(list.boardId, { list: updatedList });
@@ -88,6 +94,20 @@ export class ListsService {
     this.boardsGateway.emitListDeleted(list.boardId, { listId });
 
     return archivedList;
+  }
+
+  async deletePermanent(userId: string, listId: string) {
+    const list = await this.prisma.list.findUnique({ where: { id: listId } });
+    if (!list) throw new ForbiddenException('List not found');
+
+    await this.assertBoardMember(userId, list.boardId);
+
+    await this.prisma.list.delete({ where: { id: listId } });
+
+    // Emit WebSocket event (to be sure frontend removes it if it was somehow visible)
+    this.boardsGateway.emitListDeleted(list.boardId, { listId });
+
+    return { success: true };
   }
 }
 

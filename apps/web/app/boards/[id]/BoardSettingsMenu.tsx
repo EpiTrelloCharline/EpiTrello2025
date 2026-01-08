@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import ArchivedItemsModal from './ArchivedItemsModal';
 
 interface BoardSettingsMenuProps {
   boardId: string;
@@ -51,7 +52,7 @@ function getLuminance(color: string): number {
 // DDetermine if text should be white or black
 export function getTextColor(backgroundColor: string | null | undefined): string {
   if (!backgroundColor) return '#172b4d'; // Default color (dark)
-  
+
   // If it's a gradient, return white by default
   if (backgroundColor.startsWith('linear-gradient')) {
     return '#ffffff';
@@ -69,6 +70,7 @@ export default function BoardSettingsMenu({
   onBackgroundChange,
 }: BoardSettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isArchivedModalOpen, setIsArchivedModalOpen] = useState(false);
 
   const handleColorSelect = (color: string) => {
     onBackgroundChange(color, null);
@@ -145,9 +147,8 @@ export default function BoardSettingsMenu({
                   <button
                     key={color}
                     onClick={() => handleColorSelect(color)}
-                    className={`w-full aspect-square rounded-lg transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      currentBg === color ? 'ring-2 ring-blue-500 scale-110' : ''
-                    }`}
+                    className={`w-full aspect-square rounded-lg transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 ${currentBg === color ? 'ring-2 ring-blue-500 scale-110' : ''
+                      }`}
                     style={{ backgroundColor: color }}
                     title={color}
                   />
@@ -165,9 +166,8 @@ export default function BoardSettingsMenu({
                   <button
                     key={index}
                     onClick={() => handleGradientSelect(gradient)}
-                    className={`w-full h-16 rounded-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      currentBg === gradient ? 'ring-2 ring-blue-500 scale-105' : ''
-                    }`}
+                    className={`w-full h-16 rounded-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 ${currentBg === gradient ? 'ring-2 ring-blue-500 scale-105' : ''
+                      }`}
                     style={{ background: gradient }}
                     title={`Gradient ${index + 1}`}
                   />
@@ -179,14 +179,38 @@ export default function BoardSettingsMenu({
             {currentBg && (
               <button
                 onClick={handleReset}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 mb-2"
               >
                 Réinitialiser l'apparence
               </button>
             )}
+
+            {/* Archived Items Section */}
+            <div className="border-t pt-4 mt-2">
+              <button
+                onClick={() => setIsArchivedModalOpen(true)}
+                className="w-full flex items-center justify-between px-4 py-2 hover:bg-gray-100 rounded-lg transition-colors group"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-gray-500 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                  <span className="text-sm font-medium text-gray-700">Éléments archivés</span>
+                </div>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </>
       )}
+
+      <ArchivedItemsModal
+        boardId={boardId}
+        isOpen={isArchivedModalOpen}
+        onClose={() => setIsArchivedModalOpen(false)}
+      />
     </div>
   );
 }

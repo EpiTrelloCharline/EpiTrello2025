@@ -87,4 +87,15 @@ export class CardsController {
     ) {
         return this.cardsService.duplicate(req.user.id, cardId);
     }
+
+    @Get('archived')
+    getArchived(@Query('boardId') boardId: string, @Request() req: any) {
+        return this.cardsService.listArchived(req.user.id, boardId);
+    }
+
+    @UseGuards(BoardWriteGuard)
+    @Delete(':id/permanent')
+    deletePermanent(@Param('id') id: string, @Request() req: any) {
+        return this.cardsService.deletePermanent(req.user.id, id);
+    }
 }
