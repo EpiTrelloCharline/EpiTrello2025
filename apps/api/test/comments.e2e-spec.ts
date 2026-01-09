@@ -6,6 +6,7 @@ import { PrismaService } from '../src/prisma.service';
 import { JwtAuthGuard } from '../src/auth/jwt-auth.guard';
 import { BoardReadGuard } from '../src/boards/guards/board-read.guard';
 import { BoardWriteGuard } from '../src/boards/guards/board-write.guard';
+import { NotificationsService } from '../src/notifications/notifications.service';
 
 describe('CommentsController (e2e)', () => {
     let app: INestApplication;
@@ -21,6 +22,13 @@ describe('CommentsController (e2e)', () => {
             update: jest.fn(),
             delete: jest.fn(),
         },
+        boardMember: {
+            findMany: jest.fn(),
+        },
+    };
+
+    const mockNotificationsService = {
+        notifyBoardMembers: jest.fn(),
     };
 
     const mockUser = {
@@ -46,6 +54,8 @@ describe('CommentsController (e2e)', () => {
         })
             .overrideProvider(PrismaService)
             .useValue(mockPrismaService)
+            .overrideProvider(NotificationsService)
+            .useValue(mockNotificationsService)
             .overrideGuard(JwtAuthGuard)
             .useValue(mockJwtGuard)
             .overrideGuard(BoardReadGuard)
@@ -82,6 +92,7 @@ describe('CommentsController (e2e)', () => {
 
             mockPrismaService.card.findUnique.mockResolvedValue(mockCard);
             mockPrismaService.comment.create.mockResolvedValue({ id: 'comment1', ...dto, userId: 'user1', cardId });
+            mockNotificationsService.notifyBoardMembers.mockResolvedValue(undefined);
 
             return request(app.getHttpServer())
                 .post(`/cards/${cardId}/comments`)

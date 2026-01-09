@@ -85,8 +85,6 @@ export async function updateCardCover(
     }
 ): Promise<any> {
     const token = localStorage.getItem('token');
-    // Using PATCH /cards/:id as a fallback or specific endpoint if it exists
-    // The previous implementation used /attachments/:id/cover which seems incorrect for the UI usage
     const response = await fetch(`${API_URL}/cards/${cardId}/cover`, {
         method: 'PATCH',
         headers: {
