@@ -6,56 +6,107 @@ import { PrismaService } from '../prisma.service';
 export class SearchService {
     constructor(private prisma: PrismaService) { }
 
-    async search(userId: string, boardId: string, query: string) {
-        // 1. Check access
-        const board = await this.prisma.board.findUnique({
-            where: { id: boardId },
-            include: { members: true },
-        });
-
-        if (!board) throw new NotFoundException('Board not found');
-
-        const isMember = board.members.some(m => m.userId === userId);
-        if (!isMember && board.createdById !== userId) {
-            throw new ForbiddenException('Not a board member');
-        }
-
+    async search(userId: string, query: string, boardId?: string, workspaceId?: string) {
         if (!query || query.trim().length === 0) {
             return { cards: [], comments: [] };
         }
 
-        // 2. Search Cards
+        const searchTerm = query.trim();
+
+        // Access filter: User must be a member of the board, a member of the workspace, or the creator of the board.
+        const boardAccessFilter = {
+            OR: [
+                { members: { some: { userId } } },
+                { workspace: { members: { some: { userId } } } }
+            ]
+        };
+
+        // 1. Search Cards
         const cards = await this.prisma.card.findMany({
             where: {
-                list: {
-                    boardId: boardId,
-                },
                 OR: [
-                    { title: { contains: query, mode: 'insensitive' } },
-                    { description: { contains: query, mode: 'insensitive' } },
+                    { title: { contains: searchTerm, mode: 'insensitive' as const } },
+                    { description: { contains: searchTerm, mode: 'insensitive' as const } },
                 ],
                 isArchived: false,
+                list: {
+                    board: {
+                        ...(boardId ? { id: boardId } : {}),
+                        ...(workspaceId ? { workspaceId: workspaceId } : {}),
+                        ...boardAccessFilter
+                    }
+                }
             },
             include: {
-                list: true,
+                list: {
+                    include: {
+                        board: {
+                            select: {
+                                id: true,
+                                title: true,
+                                workspaceId: true,
+                                workspace: {
+                                    select: {
+                                        id: true,
+                                        name: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                labels: {
+                    include: {
+                        label: true
+                    }
+                }
+            },
+            orderBy: {
+                updatedAt: 'desc'
             }
         });
 
-        // 3. Search Comments
+        // 2. Search Comments
         const comments = await this.prisma.comment.findMany({
             where: {
+                content: { contains: searchTerm, mode: 'insensitive' as const },
                 card: {
+                    isArchived: false,
                     list: {
-                        boardId: boardId,
+                        board: {
+                            ...(boardId ? { id: boardId } : {}),
+                            ...(workspaceId ? { workspaceId: workspaceId } : {}),
+                            ...boardAccessFilter
+                        }
                     }
-                },
-                content: { contains: query, mode: 'insensitive' },
+                }
             },
             include: {
-                card: {
-                    include: { list: true }
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        avatar: true
+                    }
                 },
-                user: true,
+                card: {
+                    include: {
+                        list: {
+                            include: {
+                                board: {
+                                    select: {
+                                        id: true,
+                                        title: true,
+                                        workspaceId: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
             }
         });
 

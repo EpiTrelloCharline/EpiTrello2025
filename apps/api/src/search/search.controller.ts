@@ -12,11 +12,12 @@ export class SearchController {
     @Get()
     search(
         @Req() req: Request,
-        @Query('boardId') boardId: string,
-        @Query('q') query: string
+        @Query('q') query: string,
+        @Query('boardId') boardId?: string,
+        @Query('workspaceId') workspaceId?: string
     ) {
         // @ts-ignore
         const userId = req.user.id;
-        return this.searchService.search(userId, boardId, query);
+        return this.searchService.search(userId, query, boardId, workspaceId);
     }
 }
