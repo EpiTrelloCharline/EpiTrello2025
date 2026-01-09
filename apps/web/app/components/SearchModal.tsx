@@ -92,7 +92,7 @@ export function SearchModal({ boardId, onClose, onCardClick }: SearchModalProps)
                     {isSearching ? (
                         <div className="text-center text-gray-500 py-8">Recherche en cours...</div>
                     ) : query.trim() && results.cards.length === 0 && results.comments.length === 0 ? (
-                        <div className="text-center text-gray-500 py-8">Aucun résultat trouvé pour "{query}"</div>
+                        <div className="text-center text-gray-500 py-8">Aucun résultat trouvé pour &quot;{query}&quot;</div>
                     ) : (
                         <>
                             {results.cards.length > 0 && (

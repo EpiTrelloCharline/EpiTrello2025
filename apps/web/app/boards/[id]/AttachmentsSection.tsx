@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Attachment, getCardAttachments, deleteAttachment, setCardCover, uploadAttachment } from '@/app/api/attachments';
+import { Attachment, getCardAttachments, deleteAttachment, updateCardCover, uploadAttachment } from '../../api/attachments';
 import { AttachmentItem } from './AttachmentItem';
 
 type AttachmentsSectionProps = {
@@ -62,7 +62,8 @@ export function AttachmentsSection({ cardId, currentCoverId, refreshTrigger, onC
 
     const handleSetCover = async (attachmentId: string) => {
         try {
-            await setCardCover(cardId, { attachmentId, coverSize: 'normal' });
+            // @ts-ignore
+            await updateCardCover(cardId, { attachmentId, coverSize: 'normal' });
             onCoverSet();
         } catch (error) {
             console.error('Error setting cover:', error);
@@ -72,7 +73,8 @@ export function AttachmentsSection({ cardId, currentCoverId, refreshTrigger, onC
 
     const handleRemoveCover = async () => {
         try {
-            await setCardCover(cardId, { attachmentId: null, coverColor: null });
+            // @ts-ignore
+            await updateCardCover(cardId, { attachmentId: null, coverColor: null });
             onCoverSet();
         } catch (error) {
             console.error('Error removing cover:', error);

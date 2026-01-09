@@ -1,12 +1,15 @@
 
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { SearchQueryDto } from '@epitrello/validation';
 
 @Injectable()
 export class SearchService {
     constructor(private prisma: PrismaService) { }
 
-    async search(userId: string, query: string, boardId?: string, workspaceId?: string) {
+    async search(userId: string, queryDto: SearchQueryDto) {
+        const { q: query, boardId, workspaceId } = queryDto;
+
         if (!query || query.trim().length === 0) {
             return { cards: [], comments: [] };
         }

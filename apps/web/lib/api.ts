@@ -1,3 +1,5 @@
+import { SearchQueryDto } from '@epitrello/validation';
+
 export function api(path: string, init?: RequestInit) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
@@ -124,7 +126,8 @@ export async function deleteChecklistItem(itemId: string) {
 }
 
 export async function searchBoard(boardId: string, query: string) {
-  const params = new URLSearchParams({ boardId, q: query });
+  const queryDto: SearchQueryDto = { q: query, boardId };
+  const params = new URLSearchParams(queryDto as any);
   const res = await api(`/search?${params.toString()}`);
   return res.json();
 }
