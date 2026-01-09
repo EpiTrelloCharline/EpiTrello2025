@@ -1,0 +1,99 @@
+﻿
+  build_log_final.txt
+:25: ) [], 
+RemoteExce    
+  build_log_final.txt
+:26:ption
+  build_log_final.txt
+:27:    + 
+FullyQualified 
+> build_log_final.txt
+:28:   ErrorId : 
+Native  
+> build_log_final.txt
+:29:  CommandError
+  build_log_final.txt
+:30: 
+  build_log_final.txt
+:31:Failed to 
+compile.
+  build_log_final.txt
+:32:
+  build_log_final.txt
+:104:
+  build_log_final.txt
+:105:./app/boards/[id
+]/Boa
+  build_log_final.txt
+:106:rdSettingsMenu.t
+sx
+> build_log_final.txt
+:107:184:32  Error: 
+`'` 
+  build_log_final.txt
+:108:can be escaped 
+with 
+  build_log_final.txt
+:109:`&apos;`, 
+`&lsquo;`, 
+  build_log_final.txt
+:110:`&#39;`, 
+`&rsquo;`.  
+  build_log_final.txt
+:131:dependency 
+array.  re
+  build_log_final.txt
+:132:act-hooks/exhaus
+tive-
+  build_log_final.txt
+:133:deps
+> build_log_final.txt
+:134:223:84  Error: 
+`'` 
+  build_log_final.txt
+:135:can be escaped 
+with 
+  build_log_final.txt
+:136:`&apos;`, 
+`&lsquo;`, 
+  build_log_final.txt
+:137:`&#39;`, 
+`&rsquo;`.  
+  build_log_final.txt
+:209:
+  build_log_final.txt
+:210:./app/components
+/Sear
+  build_log_final.txt
+:211:chModal.tsx
+> build_log_final.txt
+:212:95:100  Error: 
+`"` 
+  build_log_final.txt
+:213:can be escaped 
+with 
+  build_log_final.txt
+:214:`&quot;`, 
+`&ldquo;`, 
+  build_log_final.txt
+:215:`&#34;`, 
+`&rdquo;`.  
+  build_log_final.txt
+:216:react/no-unescap
+ed-en
+  build_log_final.txt
+:217:tities
+> build_log_final.txt
+:218:95:108  Error: 
+`"` 
+  build_log_final.txt
+:219:can be escaped 
+with 
+  build_log_final.txt
+:220:`&quot;`, 
+`&ldquo;`, 
+  build_log_final.txt
+:221:`&#34;`, 
+`&rdquo;`.  
+
+

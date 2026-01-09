@@ -3,12 +3,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 export type Attachment = {
     id: string;
     cardId: string;
-    filename: string;
-    originalName: string;
-    mimetype: string;
+    name: string;
+    mimeType: string;
     size: number;
     url: string;
-    isCover: boolean;
     uploadedById: string;
     createdAt: string;
     updatedAt: string;
@@ -76,17 +74,26 @@ export async function deleteAttachment(attachmentId: string): Promise<void> {
 }
 
 /**
- * Set an attachment as the card cover
+ * Set a card cover (either an attachment id, a color, or both)
  */
-export async function setCardCover(attachmentId: string, isCover: boolean): Promise<Attachment> {
+export async function updateCardCover(
+    cardId: string,
+    data: {
+        attachmentId?: string | null;
+        coverSize?: string;
+        coverColor?: string | null;
+    }
+): Promise<any> {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_URL}/attachments/${attachmentId}/cover`, {
+    // Using PATCH /cards/:id as a fallback or specific endpoint if it exists
+    // The previous implementation used /attachments/:id/cover which seems incorrect for the UI usage
+    const response = await fetch(`${API_URL}/cards/${cardId}/cover`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ isCover }),
+        body: JSON.stringify(data),
     });
 
     if (!response.ok) {

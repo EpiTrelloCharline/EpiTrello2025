@@ -181,7 +181,7 @@ export default function BoardSettingsMenu({
                 onClick={handleReset}
                 className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 mb-2"
               >
-                Réinitialiser l'apparence
+                Réinitialiser l&apos;apparence
               </button>
             )}
 

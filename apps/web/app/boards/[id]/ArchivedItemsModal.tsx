@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getArchivedCards, getArchivedLists, restoreList, deleteCardPermanent, deleteListPermanent, updateCard } from '@/lib/api';
 
 interface ArchivedItemsModalProps {
@@ -15,7 +15,7 @@ export default function ArchivedItemsModal({ boardId, isOpen, onClose }: Archive
     const [archivedLists, setArchivedLists] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             if (activeTab === 'cards') {
@@ -30,13 +30,13 @@ export default function ArchivedItemsModal({ boardId, isOpen, onClose }: Archive
         } finally {
             setLoading(false);
         }
-    };
+    }, [activeTab, boardId]);
 
     useEffect(() => {
         if (isOpen) {
             fetchData();
         }
-    }, [isOpen, activeTab, boardId]);
+    }, [isOpen, fetchData]);
 
     const handleRestoreCard = async (cardId: string) => {
         try {

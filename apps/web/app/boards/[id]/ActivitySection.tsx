@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CommentInput } from './CommentInput';
 import { CommentItem } from './CommentItem';
 
@@ -28,12 +28,7 @@ export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Load comments
-    useEffect(() => {
-        loadComments();
-    }, [cardId]);
-
-    const loadComments = async () => {
+    const loadComments = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
@@ -56,7 +51,12 @@ export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [cardId]);
+
+    // Load comments
+    useEffect(() => {
+        loadComments();
+    }, [loadComments]);
 
     const handleAddComment = async (content: string) => {
         try {
