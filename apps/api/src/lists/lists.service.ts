@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma.service';
 import { BoardsGateway } from '../boards/boards.gateway';
+import { BatchMoveListsDto } from './dto/batch-move-lists.dto';
 
 @Injectable()
 export class ListsService {
@@ -108,6 +109,50 @@ export class ListsService {
     this.boardsGateway.emitListDeleted(list.boardId, { listId });
 
     return { success: true };
+  }
+
+  /**
+   * Batch update list positions - optimized for drag & drop operations
+   * Updates multiple list positions in a single transaction
+   */
+  async batchMove(userId: string, dto: BatchMoveListsDto) {
+    if (!dto.lists || dto.lists.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+
+    // Verify user has access to the board
+    await this.assertBoardMember(userId, dto.boardId);
+
+    // Verify all lists belong to the specified board
+    const listIds = dto.lists.map(l => l.listId);
+    const lists = await this.prisma.list.findMany({
+      where: { 
+        id: { in: listIds },
+        boardId: dto.boardId
+      }
+    });
+
+    if (lists.length !== listIds.length) {
+      throw new NotFoundException("One or more lists not found or don't belong to the specified board");
+    }
+
+    // Perform batch update in a transaction
+    const updates = dto.lists.map(listUpdate =>
+      this.prisma.list.update({
+        where: { id: listUpdate.listId },
+        data: { position: listUpdate.position }
+      })
+    );
+
+    await this.prisma.$transaction(updates);
+
+    // Emit WebSocket event
+    this.boardsGateway.emitBoardUpdated(dto.boardId, {
+      type: 'batch-lists-moved',
+      lists: dto.lists
+    });
+
+    return { success: true, updatedCount: dto.lists.length };
   }
 }
 

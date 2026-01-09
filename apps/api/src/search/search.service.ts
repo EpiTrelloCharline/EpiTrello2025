@@ -1,7 +1,12 @@
 
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { SearchQueryDto } from '@epitrello/validation';
+
+export interface SearchQueryDto {
+    q: string;
+    boardId?: string;
+    workspaceId?: string;
+}
 
 @Injectable()
 export class SearchService {

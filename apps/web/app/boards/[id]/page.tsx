@@ -16,7 +16,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { api, getCardsByList, createCard, moveCard, updateCard, updateList, deleteList } from '@/lib/api';
+import { api, getCardsByList, createCard, moveCard, updateCard, updateList, deleteList, batchMoveCards, batchMoveLists, CardPositionUpdate, ListPositionUpdate } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardMembers } from './BoardMembers';
@@ -258,6 +258,59 @@ export default function BoardPage() {
       });
     };
 
+    // Handle batch updates from other clients
+    const handleBoardUpdated = (data: { type: string; cards?: { cardId: string; listId: string; position: number }[]; lists?: { listId: string; position: number }[] }) => {
+      console.log('Board updated event:', data);
+      
+      if (data.type === 'batch-cards-moved' && data.cards) {
+        // Update card positions
+        setCardsByList(prev => {
+          const newState = { ...prev };
+          
+          for (const update of data.cards!) {
+            // Find and update card position
+            for (const listId of Object.keys(newState)) {
+              const cardIndex = newState[listId].findIndex(c => c.id === update.cardId);
+              if (cardIndex !== -1) {
+                const card = newState[listId][cardIndex];
+                
+                // If card moved to different list
+                if (card.listId !== update.listId) {
+                  // Remove from old list
+                  newState[listId] = newState[listId].filter(c => c.id !== update.cardId);
+                  // Add to new list
+                  const updatedCard = { ...card, listId: update.listId, position: String(update.position) };
+                  newState[update.listId] = [...(newState[update.listId] || []), updatedCard];
+                } else {
+                  // Update position in same list
+                  newState[listId][cardIndex] = { ...card, position: String(update.position) };
+                }
+                break;
+              }
+            }
+          }
+          
+          // Sort cards by position in each list
+          for (const listId of Object.keys(newState)) {
+            newState[listId] = newState[listId].sort((a, b) => parseFloat(a.position) - parseFloat(b.position));
+          }
+          
+          return newState;
+        });
+      }
+      
+      if (data.type === 'batch-lists-moved' && data.lists) {
+        // Update list positions
+        setLists(prev => {
+          const newLists = prev.map(list => {
+            const update = data.lists!.find(u => u.listId === list.id);
+            return update ? { ...list, position: update.position } : list;
+          });
+          return newLists.sort((a, b) => a.position - b.position);
+        });
+      }
+    };
+
     // Register event listeners
     socket.on('cardCreated', handleCardCreated);
     socket.on('cardMoved', handleCardMoved);
@@ -266,6 +319,7 @@ export default function BoardPage() {
     socket.on('listCreated', handleListCreated);
     socket.on('listUpdated', handleListUpdated);
     socket.on('listDeleted', handleListDeleted);
+    socket.on('boardUpdated', handleBoardUpdated);
 
     // Cleanup
     return () => {
@@ -276,6 +330,7 @@ export default function BoardPage() {
       socket.off('listCreated', handleListCreated);
       socket.off('listUpdated', handleListUpdated);
       socket.off('listDeleted', handleListDeleted);
+      socket.off('boardUpdated', handleBoardUpdated);
     };
   }, [socket]);
 
@@ -401,6 +456,15 @@ export default function BoardPage() {
     return (prevPos + nextPos) / 2;
   }
 
+  // Helper: Recalculate all positions in a list (normalized to 1, 2, 3, ...)
+  function normalizeCardPositions(cards: Card[]): CardPositionUpdate[] {
+    return cards.map((card, index) => ({
+      cardId: card.id,
+      listId: card.listId,
+      position: index + 1
+    }));
+  }
+
   // Unified drag handler for both lists and cards
   function handleDragStart(event: DragStartEvent) {
     const draggedId = event.active.id as string;
@@ -467,16 +531,43 @@ export default function BoardPage() {
         newState[targetListId] = targetCards;
       }
 
+      // Update positions in state for consistency
+      if (sourceListId === targetListId) {
+        newState[sourceListId] = newState[sourceListId].map((c, i) => ({ ...c, position: String(i + 1) }));
+      } else {
+        newState[sourceListId] = newState[sourceListId].map((c, i) => ({ ...c, position: String(i + 1) }));
+        newState[targetListId] = newState[targetListId].map((c, i) => ({ ...c, position: String(i + 1) }));
+      }
+
       setCardsByList(newState);
 
-      const finalCards = newState[targetListId];
-      const finalIndex = finalCards.findIndex((c) => c.id === draggedId);
-      const newPosition = computeNewPosition(finalCards, finalIndex);
+      // Build batch update for all affected cards
+      const cardsToUpdate: CardPositionUpdate[] = [];
+      
+      // Add all cards from source list with updated positions
+      newState[sourceListId].forEach((card, index) => {
+        cardsToUpdate.push({
+          cardId: card.id,
+          listId: sourceListId,
+          position: index + 1
+        });
+      });
+
+      // If moved to a different list, add cards from target list
+      if (sourceListId !== targetListId) {
+        newState[targetListId].forEach((card, index) => {
+          cardsToUpdate.push({
+            cardId: card.id,
+            listId: targetListId,
+            position: index + 1
+          });
+        });
+      }
 
       try {
-        await moveCard(draggedId, targetListId, newPosition);
+        await batchMoveCards(cardsToUpdate, params?.id);
       } catch (error) {
-        console.error('Failed to move card:', error);
+        console.error('Failed to batch move cards:', error);
         setCardsByList(previousCardsByList);
         alert('Échec du déplacement de la carte. Les modifications ont été annulées.');
       }
@@ -494,11 +585,20 @@ export default function BoardPage() {
       const updated = next.map((l, i) => ({ ...l, position: i + 1 }));
       setLists(updated);
 
-      await api('/lists/move', {
-        method: 'POST', body: JSON.stringify({
-          listId: active.id, boardId: params.id, newPosition: updated.find(l => l.id === active.id)!.position
-        })
-      });
+      // Build batch update for all lists with new positions
+      const listsToUpdate: ListPositionUpdate[] = updated.map(l => ({
+        listId: l.id,
+        position: l.position
+      }));
+
+      try {
+        await batchMoveLists(params?.id as string, listsToUpdate);
+      } catch (error) {
+        console.error('Failed to batch move lists:', error);
+        // Rollback on error
+        setLists(lists);
+        alert('Échec du déplacement de la liste. Les modifications ont été annulées.');
+      }
     }
   }
 

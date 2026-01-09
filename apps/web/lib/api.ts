@@ -42,6 +42,35 @@ export async function moveCard(cardId: string, listId: string, newPosition: numb
   return res.json();
 }
 
+// Batch move cards - optimized for drag & drop
+export type CardPositionUpdate = {
+  cardId: string;
+  listId: string;
+  position: number;
+};
+
+export async function batchMoveCards(cards: CardPositionUpdate[], boardId?: string) {
+  const res = await api('/cards/batch-move', {
+    method: 'POST',
+    body: JSON.stringify({ cards, boardId }),
+  });
+  return res.json();
+}
+
+// Batch move lists - optimized for drag & drop
+export type ListPositionUpdate = {
+  listId: string;
+  position: number;
+};
+
+export async function batchMoveLists(boardId: string, lists: ListPositionUpdate[]) {
+  const res = await api('/lists/batch-move', {
+    method: 'POST',
+    body: JSON.stringify({ boardId, lists }),
+  });
+  return res.json();
+}
+
 export async function deleteCard(cardId: string) {
   const res = await api(`/cards/${cardId}`, {
     method: 'DELETE',

@@ -10,6 +10,7 @@ import { CreateListDto } from './dto/create-list.dto';
 
 import { MoveListDto } from './dto/move-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
+import { BatchMoveListsDto } from './dto/batch-move-lists.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('lists')
@@ -32,6 +33,12 @@ export class ListsController {
   @Post('move')
   move(@Body() dto: MoveListDto, @Request() req: any) {
     return this.svc.move(req.user.id, dto.listId, dto.boardId, dto.newPosition);
+  }
+
+  @UseGuards(BoardWriteGuard)
+  @Post('batch-move')
+  batchMove(@Body() dto: BatchMoveListsDto, @Request() req: any) {
+    return this.svc.batchMove(req.user.id, dto);
   }
 
   @UseGuards(BoardWriteGuard)

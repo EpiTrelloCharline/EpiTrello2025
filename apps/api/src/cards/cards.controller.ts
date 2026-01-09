@@ -6,6 +6,7 @@ import { CardsService } from './cards.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { BatchMoveCardsDto } from './dto/batch-move-cards.dto';
 import { LabelsService } from '../labels/labels.service';
 import { AssignLabelDto } from '../labels/dto/assign-label.dto';
 
@@ -33,6 +34,12 @@ export class CardsController {
     @Post('move')
     move(@Body() moveCardDto: MoveCardDto, @Request() req: any) {
         return this.cardsService.move(req.user.id, moveCardDto);
+    }
+
+    @UseGuards(BoardWriteGuard)
+    @Post('batch-move')
+    batchMove(@Body() batchMoveDto: BatchMoveCardsDto, @Request() req: any) {
+        return this.cardsService.batchMove(req.user.id, batchMoveDto);
     }
 
     @UseGuards(BoardWriteGuard)
