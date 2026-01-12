@@ -40,11 +40,16 @@ test.describe('Flow Complet: Board, Cartes et Checklists', () => {
             // Create board
             await page.getByPlaceholder(/Nom du tableau/i).fill(boardName);
 
+            // Wait for button to be enabled
+            const createBtn = page.getByRole('button', { name: /Créer/i });
+            await expect(createBtn).toBeEnabled();
+
             // Wait for the POST response to ensure it's created
             const responsePromise = page.waitForResponse(response =>
-                response.url().includes('/boards') && response.request().method() === 'POST'
+                response.url().includes('/boards') && response.request().method() === 'POST',
+                { timeout: 30000 }
             );
-            await page.getByRole('button', { name: /Créer/i }).click();
+            await createBtn.click();
             await responsePromise;
 
             // Wait for board to appear in the list and click it
@@ -146,24 +151,22 @@ test.describe('Flow Complet: Board, Cartes et Checklists', () => {
             await boardPage.openCard(cardTitle);
 
             // Delete an item
-            const itemToDelete = 'Élément 1'; // Assuming this was created
+            const itemToDelete = 'Élément 1';
             const itemContainer = page.locator('div').filter({ hasText: itemToDelete }).last();
-
-            // Click delete button on item (assuming hover or specific button)
-            // If no specific delete button is visible, we might need to hover
-            await itemContainer.hover();
-            await itemContainer.getByRole('button', { name: /supprimer|delete|trash/i }).click(); // Adjust selector based on actual UI
+            // Click delete button using force because it might be hidden until hover
+            await itemContainer.getByLabel("Supprimer l'élément").click({ force: true });
 
             // Verify item is gone
             await expect(page.locator(`text=${itemToDelete}`)).not.toBeVisible();
 
             // Delete entire checklist
-            const checklistHeader = page.locator('h3').filter({ hasText: 'Ma Checklist' });
-            // Assuming there is a delete button near the header
-            await checklistHeader.locator('xpath=..').getByRole('button', { name: /supprimer|delete/i }).click();
+            const checklistSection = page.locator('.group').filter({ hasText: 'Ma Checklist' }).first();
 
-            // Confirm deletion if there's a confirmation
-            // await page.getByRole('button', { name: /confirmer|oui/i }).click(); // Uncomment if confirmation needed
+            // Handle confirmation dialog
+            page.once('dialog', dialog => dialog.accept());
+
+            // Click "Supprimer" button using force
+            await checklistSection.getByRole('button', { name: 'Supprimer' }).click({ force: true });
 
             // Verify checklist is gone
             await expect(page.locator('h3:has-text("Ma Checklist")')).not.toBeVisible();
