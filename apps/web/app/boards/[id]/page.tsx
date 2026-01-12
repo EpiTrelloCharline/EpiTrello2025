@@ -26,6 +26,7 @@ import { useWebSocket } from '@/app/context/WebSocketContext';
 import BoardSettingsMenu, { getTextColor } from './BoardSettingsMenu';
 import { SearchModal } from '@/app/components/SearchModal';
 import { NotificationBell } from '@/app/components/NotificationBell';
+import { FilterPopover, DateFilterType } from './FilterPopover';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -69,13 +70,14 @@ export default function BoardPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('none');
   const [board, setBoard] = useState<Board | null>(null);
 
   // Activity Sidebar State
   const [isActivitySidebarOpen, setIsActivitySidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-  const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0;
+  const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0 || dateFilter !== 'none';
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   // Debug log
@@ -412,8 +414,41 @@ export default function BoardPage() {
       if (!hasMember) return false;
     }
 
+    // Date filter logic
+    if (dateFilter !== 'none') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfWeek = new Date(today);
+      endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
+
+      switch (dateFilter) {
+        case 'overdue':
+          if (!card.dueDate) return false;
+          const dueDate = new Date(card.dueDate);
+          if (dueDate >= today || card.isDone) return false;
+          break;
+        case 'dueToday':
+          if (!card.dueDate) return false;
+          const dueDateToday = new Date(card.dueDate);
+          const dueDateOnlyToday = new Date(dueDateToday.getFullYear(), dueDateToday.getMonth(), dueDateToday.getDate());
+          if (dueDateOnlyToday.getTime() !== today.getTime()) return false;
+          break;
+        case 'dueThisWeek':
+          if (!card.dueDate) return false;
+          const dueDateWeek = new Date(card.dueDate);
+          if (dueDateWeek < today || dueDateWeek > endOfWeek) return false;
+          break;
+        case 'noDueDate':
+          if (card.dueDate) return false;
+          break;
+        case 'completed':
+          if (!card.isDone) return false;
+          break;
+      }
+    }
+
     return true;
-  }, [searchTerm, selectedLabelIds, selectedMemberIds]);
+  }, [searchTerm, selectedLabelIds, selectedMemberIds, dateFilter]);
 
   const filteredCardsByList = useMemo(() => {
     return Object.fromEntries(
@@ -796,50 +831,43 @@ export default function BoardPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-
-
-
-
-
-
-          {/* Member Filter */}
-          {board?.members && board.members.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium opacity-80">Membres:</span>
-              <div className="flex -space-x-2 overflow-hidden p-1">
-                {board.members.map(member => {
-                  const isSelected = selectedMemberIds.includes(member.userId);
-                  return (
-                    <button
-                      key={member.id}
-                      onClick={() => {
-                        setSelectedMemberIds(prev =>
-                          isSelected ? prev.filter(id => id !== member.userId) : [...prev, member.userId]
-                        );
-                      }}
-                      className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-transform focus:outline-none focus:ring-2 focus:ring-blue-300 ${isSelected ? 'border-blue-400 z-10 scale-110' : 'border-transparent hover:z-10 hover:scale-105'
-                        }`}
-                      style={{ backgroundColor: '#dfe1e6', color: '#172b4d' }}
-                      title={member.user.name || member.user.email}
-                    >
-                      {member.user.name ? member.user.name[0].toUpperCase() : member.user.email[0].toUpperCase()}
-                      {isSelected && (
-                        <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full w-3 h-3 border border-white"></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          {/* Filter Popover */}
+          {board && (
+            <FilterPopover
+              labels={board.labels || []}
+              members={board.members || []}
+              selectedLabelIds={selectedLabelIds}
+              selectedMemberIds={selectedMemberIds}
+              dateFilter={dateFilter}
+              onLabelToggle={(labelId) => {
+                setSelectedLabelIds(prev =>
+                  prev.includes(labelId) ? prev.filter(id => id !== labelId) : [...prev, labelId]
+                );
+              }}
+              onMemberToggle={(memberId) => {
+                setSelectedMemberIds(prev =>
+                  prev.includes(memberId) ? prev.filter(id => id !== memberId) : [...prev, memberId]
+                );
+              }}
+              onDateFilterChange={setDateFilter}
+              onClearAll={() => {
+                setSearchTerm("");
+                setSelectedLabelIds([]);
+                setSelectedMemberIds([]);
+                setDateFilter('none');
+              }}
+              textColor={textColor}
+            />
           )}
 
-          {/* Clear Filters */}
+          {/* Clear Filters Button */}
           {isFiltering && (
             <button
               onClick={() => {
                 setSearchTerm("");
                 setSelectedLabelIds([]);
                 setSelectedMemberIds([]);
+                setDateFilter('none');
               }}
               className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
               style={{ color: textColor }}
