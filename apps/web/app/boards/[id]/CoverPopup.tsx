@@ -49,7 +49,7 @@ export function CoverPopup({
         try {
             const data = await getCardAttachments(cardId);
             // Only show images
-            setAttachments(data.filter(a => a.mimeType.startsWith('image/')));
+            setAttachments(data.filter(a => a.mimetype.startsWith('image/')));
         } catch (error) {
             console.error('Error loading attachments:', error);
         }
@@ -205,7 +205,7 @@ export function CoverPopup({
                                 >
                                     <img
                                         src={`${API_URL}/${attachment.url}`}
-                                        alt={attachment.name}
+                                        alt={attachment.originalName}
                                         className="w-full h-full object-cover"
                                     />
                                 </button>
