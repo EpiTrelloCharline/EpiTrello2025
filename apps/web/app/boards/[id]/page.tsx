@@ -25,6 +25,7 @@ import { ListSkeleton } from '@/app/components/ListSkeleton';
 import { useWebSocket } from '@/app/context/WebSocketContext';
 import BoardSettingsMenu, { getTextColor } from './BoardSettingsMenu';
 import { SearchModal } from '@/app/components/SearchModal';
+import { NotificationBell } from '@/app/components/NotificationBell';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -768,6 +769,11 @@ export default function BoardPage() {
           </svg>
           <span className="hidden md:inline">Historique</span>
         </button>
+
+        {/* Notifications Bell */}
+        <div className="bg-white/20 rounded-full hover:bg-white/30 transition-colors">
+          <NotificationBell boardId={params.id} />
+        </div>
 
         {/* Board Settings Menu */}
         {board && (
