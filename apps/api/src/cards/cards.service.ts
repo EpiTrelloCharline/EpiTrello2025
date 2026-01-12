@@ -7,6 +7,7 @@ import { PrismaService } from "../prisma.service";
 import { CreateCardDto } from "./dto/create-card.dto";
 import { MoveCardDto } from "./dto/move-card.dto";
 import { UpdateCardDto } from "./dto/update-card.dto";
+import { BatchMoveCardsDto } from "./dto/batch-move-cards.dto";
 import { ActivitiesService } from "../activities/activities.service";
 import { ActivityType, NotificationType } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -428,5 +429,84 @@ export class CardsService {
     });
 
     return created;
+  }
+
+  /**
+   * Batch update card positions - optimized for drag & drop operations
+   * Updates multiple card positions in a single transaction
+   */
+  async batchMove(userId: string, dto: BatchMoveCardsDto) {
+    if (!dto.cards || dto.cards.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+
+    // Verify user has access to all affected cards
+    const cardIds = dto.cards.map(c => c.cardId);
+    const cards = await this.prisma.card.findMany({
+      where: { id: { in: cardIds } },
+      include: {
+        list: {
+          include: {
+            board: { include: { members: true } }
+          }
+        }
+      }
+    });
+
+    if (cards.length !== cardIds.length) {
+      throw new NotFoundException("One or more cards not found");
+    }
+
+    // Check permissions for all cards
+    const boardIds = new Set<string>();
+    for (const card of cards) {
+      const isMember = card.list.board.members.some(m => m.userId === userId);
+      if (!isMember && card.list.board.createdById !== userId) {
+        throw new ForbiddenException("Not authorized to move one or more cards");
+      }
+      boardIds.add(card.list.boardId);
+    }
+
+    // Verify all target lists exist and user has access
+    const targetListIds = [...new Set(dto.cards.map(c => c.listId))];
+    const targetLists = await this.prisma.list.findMany({
+      where: { id: { in: targetListIds } },
+      include: { board: { include: { members: true } } }
+    });
+
+    if (targetLists.length !== targetListIds.length) {
+      throw new NotFoundException("One or more target lists not found");
+    }
+
+    for (const list of targetLists) {
+      const isMember = list.board.members.some(m => m.userId === userId);
+      if (!isMember && list.board.createdById !== userId) {
+        throw new ForbiddenException("Not authorized to move cards to one or more lists");
+      }
+      boardIds.add(list.boardId);
+    }
+
+    // Perform batch update in a transaction
+    const updates = dto.cards.map(cardUpdate => 
+      this.prisma.card.update({
+        where: { id: cardUpdate.cardId },
+        data: {
+          listId: cardUpdate.listId,
+          position: cardUpdate.position
+        }
+      })
+    );
+
+    await this.prisma.$transaction(updates);
+
+    // Emit WebSocket events for each affected board
+    for (const boardId of boardIds) {
+      this.boardsGateway.emitBoardUpdated(boardId, {
+        type: 'batch-cards-moved',
+        cards: dto.cards
+      });
+    }
+
+    return { success: true, updatedCount: dto.cards.length };
   }
 }
