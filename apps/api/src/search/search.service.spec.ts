@@ -37,7 +37,7 @@ describe('SearchService', () => {
 
     describe('search', () => {
         it('should return empty results if query is empty', async () => {
-            const result = await service.search('user-1', '');
+            const result = await service.search('user-1', { q: '' });
             expect(result).toEqual({ cards: [], comments: [] });
         });
 
@@ -45,7 +45,7 @@ describe('SearchService', () => {
             mockPrismaService.card.findMany.mockResolvedValue([]);
             mockPrismaService.comment.findMany.mockResolvedValue([]);
 
-            await service.search('user-1', 'test');
+            await service.search('user-1', { q: 'test' });
 
             expect(prisma.card.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -68,7 +68,7 @@ describe('SearchService', () => {
         });
 
         it('should apply boardId filter when provided', async () => {
-            await service.search('user-1', 'test', 'board-1');
+            await service.search('user-1', { q: 'test', boardId: 'board-1' });
 
             expect(prisma.card.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -84,7 +84,7 @@ describe('SearchService', () => {
         });
 
         it('should apply workspaceId filter when provided', async () => {
-            await service.search('user-1', 'test', undefined, 'workspace-1');
+            await service.search('user-1', { q: 'test', workspaceId: 'workspace-1' });
 
             expect(prisma.card.findMany).toHaveBeenCalledWith(
                 expect.objectContaining({

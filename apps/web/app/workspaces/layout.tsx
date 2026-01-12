@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { NotificationBell } from '@/app/components/NotificationBell';
 
 export default function WorkspacesLayout({
   children,
@@ -13,13 +16,14 @@ export default function WorkspacesLayout({
             <Link href="/" className="text-xl font-bold">
               Epi Trello
             </Link>
-            <div className="flex gap-4">
+            <div className="flex items-center gap-4">
               <Link
                 href="/workspaces"
                 className="text-blue-600 hover:text-blue-800 font-medium"
               >
                 Workspaces
               </Link>
+              <NotificationBell />
             </div>
           </div>
         </div>

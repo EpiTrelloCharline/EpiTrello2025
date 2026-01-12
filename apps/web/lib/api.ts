@@ -164,3 +164,87 @@ export async function restoreList(listId: string, title?: string) {
   });
   return res.json();
 }
+
+// Notifications
+export interface Notification {
+  id: string;
+  type: string;
+  message: string;
+  userId: string;
+  boardId: string;
+  entityId?: string;
+  isRead: boolean;
+  createdAt: string;
+  updatedAt: string;
+  user?: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+  board?: {
+    id: string;
+    title: string;
+  };
+}
+
+export interface NotificationsResponse {
+  notifications: Notification[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface GetNotificationsParams {
+  unreadOnly?: boolean;
+  boardId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function getNotifications(params?: GetNotificationsParams): Promise<NotificationsResponse> {
+  const queryParams = new URLSearchParams();
+  
+  if (params?.unreadOnly !== undefined) {
+    queryParams.append('unreadOnly', String(params.unreadOnly));
+  }
+  if (params?.boardId) {
+    queryParams.append('boardId', params.boardId);
+  }
+  if (params?.limit !== undefined) {
+    queryParams.append('limit', String(params.limit));
+  }
+  if (params?.offset !== undefined) {
+    queryParams.append('offset', String(params.offset));
+  }
+  
+  const queryString = queryParams.toString();
+  const res = await api(`/notifications${queryString ? `?${queryString}` : ''}`);
+  return res.json();
+}
+
+export async function getUnreadNotificationsCount(boardId?: string): Promise<{ count: number }> {
+  const queryParams = boardId ? `?boardId=${boardId}` : '';
+  const res = await api(`/notifications/unread-count${queryParams}`);
+  return res.json();
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<{ message: string }> {
+  const res = await api(`/notifications/${notificationId}/read`, {
+    method: 'PATCH',
+  });
+  return res.json();
+}
+
+export async function markAllNotificationsAsRead(boardId?: string): Promise<{ message: string }> {
+  const queryParams = boardId ? `?boardId=${boardId}` : '';
+  const res = await api(`/notifications/mark-all-read${queryParams}`, {
+    method: 'PATCH',
+  });
+  return res.json();
+}
+
+export async function deleteNotification(notificationId: string): Promise<{ message: string }> {
+  const res = await api(`/notifications/${notificationId}`, {
+    method: 'DELETE',
+  });
+  return res.json();
+}
