@@ -6,6 +6,7 @@ import { BoardsModule } from "../boards/boards.module";
 import { LabelsModule } from "../labels/labels.module";
 import { ActivitiesModule } from "../activities/activities.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+// WebSocketsGateway is available globally via WebSocketsModule
 
 @Module({
   imports: [BoardsModule, LabelsModule, ActivitiesModule, NotificationsModule],

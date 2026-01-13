@@ -11,6 +11,7 @@ import { CommentsModule } from './comments/comments.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { ChecklistsModule } from './checklists/checklists.module';
 import { SearchModule } from './search/search.module';
+import { WebSocketsModule } from './websockets/websockets.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { SearchModule } from './search/search.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    WebSocketsModule, // Global WebSocket module - must be imported before other modules
     AuthModule,
     WorkspacesModule,
     BoardsModule,

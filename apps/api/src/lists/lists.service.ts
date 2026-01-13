@@ -1,14 +1,14 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma.service';
-import { BoardsGateway } from '../boards/boards.gateway';
+import { WebSocketsGateway } from '../websockets/websockets.gateway';
 import { BatchMoveListsDto } from './dto/batch-move-lists.dto';
 
 @Injectable()
 export class ListsService {
   constructor(
     private prisma: PrismaService,
-    private boardsGateway: BoardsGateway,
+    private webSocketsGateway: WebSocketsGateway,
   ) { }
 
   private async assertBoardMember(userId: string, boardId: string) {
@@ -44,7 +44,11 @@ export class ListsService {
     const list = await this.prisma.list.create({ data: { boardId, title, position } });
 
     // Emit WebSocket event
-    this.boardsGateway.emitListCreated(boardId, { list });
+    this.webSocketsGateway.emitListCreated(boardId, {
+      listId: list.id,
+      list,
+      boardId,
+    });
 
     return list;
   }
@@ -55,7 +59,11 @@ export class ListsService {
     const list = await this.prisma.list.update({ where: { id: listId }, data: { position: newPosition } });
 
     // Emit WebSocket event
-    this.boardsGateway.emitListUpdated(boardId, { list });
+    this.webSocketsGateway.emitListUpdated(boardId, {
+      listId: list.id,
+      list,
+      boardId,
+    });
 
     return list;
   }
@@ -76,7 +84,11 @@ export class ListsService {
     });
 
     // Emit WebSocket event
-    this.boardsGateway.emitListUpdated(list.boardId, { list: updatedList });
+    this.webSocketsGateway.emitListUpdated(list.boardId, {
+      listId: updatedList.id,
+      list: updatedList,
+      boardId: list.boardId,
+    });
 
     return updatedList;
   }
@@ -92,7 +104,10 @@ export class ListsService {
     const archivedList = await this.prisma.list.update({ where: { id: listId }, data: { isArchived: true } });
 
     // Emit WebSocket event
-    this.boardsGateway.emitListDeleted(list.boardId, { listId });
+    this.webSocketsGateway.emitListDeleted(list.boardId, {
+      listId,
+      boardId: list.boardId,
+    });
 
     return archivedList;
   }
@@ -106,7 +121,10 @@ export class ListsService {
     await this.prisma.list.delete({ where: { id: listId } });
 
     // Emit WebSocket event (to be sure frontend removes it if it was somehow visible)
-    this.boardsGateway.emitListDeleted(list.boardId, { listId });
+    this.webSocketsGateway.emitListDeleted(list.boardId, {
+      listId,
+      boardId: list.boardId,
+    });
 
     return { success: true };
   }
@@ -147,9 +165,12 @@ export class ListsService {
     await this.prisma.$transaction(updates);
 
     // Emit WebSocket event
-    this.boardsGateway.emitBoardUpdated(dto.boardId, {
-      type: 'batch-lists-moved',
-      lists: dto.lists
+    this.webSocketsGateway.emitBoardUpdated(dto.boardId, {
+      boardId: dto.boardId,
+      board: {
+        type: 'batch-lists-moved',
+        lists: dto.lists
+      },
     });
 
     return { success: true, updatedCount: dto.lists.length };

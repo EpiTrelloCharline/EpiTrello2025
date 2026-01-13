@@ -4,12 +4,14 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '@prisma/client';
+import { WebSocketsGateway } from '../websockets/websockets.gateway';
 
 @Injectable()
 export class CommentsService {
     constructor(
         private prisma: PrismaService,
         private notificationsService: NotificationsService,
+        private webSocketsGateway: WebSocketsGateway,
     ) { }
 
     async findAll(userId: string, cardId: string) {
@@ -80,6 +82,20 @@ export class CommentsService {
             `Nouveau commentaire sur la carte "${card.title}"`,
             card.id,
         );
+
+        // Emit WebSocket event - comment_add
+        this.webSocketsGateway.emitCommentAdd(card.list.boardId, {
+            commentId: comment.id,
+            cardId: cardId,
+            boardId: card.list.boardId,
+            content: comment.content,
+            user: {
+                id: comment.user.id,
+                name: comment.user.name,
+                avatar: comment.user.avatar,
+            },
+            createdAt: comment.createdAt,
+        });
 
         return comment;
     }
