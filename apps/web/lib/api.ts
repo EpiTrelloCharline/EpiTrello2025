@@ -277,3 +277,63 @@ export async function deleteNotification(notificationId: string): Promise<{ mess
   });
   return res.json();
 }
+
+// Comments
+export interface Comment {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    avatar: string | null;
+  };
+}
+
+export interface CreateCommentDto {
+  content: string;
+}
+
+export interface UpdateCommentDto {
+  content: string;
+}
+
+export async function getComments(cardId: string): Promise<Comment[]> {
+  const res = await api(`/cards/${cardId}/comments`);
+  if (!res.ok) {
+    throw new Error('Failed to load comments');
+  }
+  return res.json();
+}
+
+export async function createComment(cardId: string, data: CreateCommentDto): Promise<Comment> {
+  const res = await api(`/cards/${cardId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to add comment');
+  }
+  return res.json();
+}
+
+export async function updateComment(commentId: string, data: UpdateCommentDto): Promise<Comment> {
+  const res = await api(`/comments/${commentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to update comment');
+  }
+  return res.json();
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  const res = await api(`/comments/${commentId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    throw new Error('Failed to delete comment');
+  }
+}

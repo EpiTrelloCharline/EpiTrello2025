@@ -1,49 +1,41 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CommentInput } from './CommentInput';
 import { CommentItem } from './CommentItem';
+import {
+    Comment,
+    getComments,
+    createComment,
+    updateComment,
+    deleteComment,
+} from '@/lib/api';
 
-type Comment = {
-    id: string;
-    content: string;
-    createdAt: string;
-    updatedAt: string;
-    user: {
-        id: string;
-        name: string | null;
-        avatar: string | null;
-    };
-};
-
-type ActivitySectionProps = {
+/** Props of ActivitySection */
+interface ActivitySectionProps {
     cardId: string;
     currentUser: {
         id: string;
         name?: string;
         avatar?: string | null;
     };
-};
+}
 
+/**
+ * Component displaying the activity section of a card
+ * Manages comments (reading, creating, updating, deleting)
+ */
 export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
     const [comments, setComments] = useState<Comment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    /**
+     * Loads comments from the API
+     */
     const loadComments = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            const token = localStorage.getItem('accessToken');
-            const response = await fetch(`http://localhost:3001/cards/${cardId}/comments`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to load comments');
-            }
-
-            const data = await response.json();
+            const data = await getComments(cardId);
             setComments(data);
         } catch (err) {
             console.error('Error loading comments:', err);
@@ -53,74 +45,46 @@ export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
         }
     }, [cardId]);
 
-    // Load comments
+    // Load comments on component mount
     useEffect(() => {
         loadComments();
     }, [loadComments]);
 
+    /**
+     * Adds a new comment
+     */
     const handleAddComment = async (content: string) => {
         try {
-            const token = localStorage.getItem('accessToken');
-            const response = await fetch(`http://localhost:3001/cards/${cardId}/comments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ content }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to add comment');
-            }
-
-            const newComment = await response.json();
-            setComments([newComment, ...comments]);
+            const newComment = await createComment(cardId, { content });
+            setComments((prev) => [newComment, ...prev]);
         } catch (err) {
             console.error('Error adding comment:', err);
             throw err;
         }
     };
 
+    /**
+     * Updates an existing comment
+     */
     const handleUpdateComment = async (commentId: string, content: string) => {
         try {
-            const token = localStorage.getItem('accessToken');
-            const response = await fetch(`http://localhost:3001/comments/${commentId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({ content }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to update comment');
-            }
-
-            const updatedComment = await response.json();
-            setComments(comments.map(c => c.id === commentId ? updatedComment : c));
+            const updatedComment = await updateComment(commentId, { content });
+            setComments((prev) =>
+                prev.map((c) => (c.id === commentId ? updatedComment : c))
+            );
         } catch (err) {
             console.error('Error updating comment:', err);
             throw err;
         }
     };
 
+    /**
+     * Deletes a comment
+     */
     const handleDeleteComment = async (commentId: string) => {
         try {
-            const token = localStorage.getItem('accessToken');
-            const response = await fetch(`http://localhost:3001/comments/${commentId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete comment');
-            }
-
-            setComments(comments.filter(c => c.id !== commentId));
+            await deleteComment(commentId);
+            setComments((prev) => prev.filter((c) => c.id !== commentId));
         } catch (err) {
             console.error('Error deleting comment:', err);
             throw err;
