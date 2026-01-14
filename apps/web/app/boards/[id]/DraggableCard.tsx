@@ -45,11 +45,12 @@ type DraggableCardProps = {
     onUpdate: (cardId: string, data: { title?: string }) => void;
     onClick?: () => void;
     isDragDisabled?: boolean;
+    isDragOverlay?: boolean;
     onLabelsUpdated?: () => void;
     onDuplicate?: (cardId: string) => void;
 };
 
-export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDragDisabled, onLabelsUpdated, onDuplicate }: DraggableCardProps) {
+export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDragDisabled, isDragOverlay, onLabelsUpdated, onDuplicate }: DraggableCardProps) {
     const {
         attributes,
         listeners,
@@ -75,10 +76,13 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
         setEditTitle(card.title);
     }, [card.title]);
 
+    // When this card is being dragged (showing in DragOverlay), show placeholder
+    const showPlaceholder = isDragging || isDragOverlay;
+
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: showPlaceholder ? 0.4 : 1,
     };
 
     function handleSave() {
@@ -114,7 +118,9 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                 style={style}
                 {...attributes}
                 {...listeners}
-                className="bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
+                    showPlaceholder ? 'border-2 border-dashed border-blue-400 bg-blue-50/30' : ''
+                } ${isDragging ? 'shadow-lg ring-2 ring-blue-500' : ''}`}
                 onClick={onClick}
                 onContextMenu={(e) => {
                     e.preventDefault();

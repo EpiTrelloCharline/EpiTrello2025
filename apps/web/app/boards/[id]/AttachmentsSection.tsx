@@ -95,8 +95,8 @@ export function AttachmentsSection({ cardId, currentCoverId, refreshTrigger, onC
     }
 
     // Separate images from documents
-    const images = attachments.filter(a => a.mimetype.startsWith('image/'));
-    const documents = attachments.filter(a => !a.mimetype.startsWith('image/'));
+    const images = attachments.filter(a => a.mimeType.startsWith('image/'));
+    const documents = attachments.filter(a => !a.mimeType.startsWith('image/'));
 
     const formatFileSize = (bytes: number) => {
         if (bytes < 1024) return bytes + ' B';
@@ -172,9 +172,9 @@ export function AttachmentsSection({ cardId, currentCoverId, refreshTrigger, onC
                                 key={attachment.id}
                                 attachment={{
                                     id: attachment.id,
-                                    name: attachment.originalName,
+                                    name: attachment.name,
                                     url: attachment.url,
-                                    mimeType: attachment.mimetype,
+                                    mimeType: attachment.mimeType,
                                     createdAt: attachment.createdAt,
                                 }}
                                 isCover={currentCoverId === attachment.id}
@@ -197,14 +197,14 @@ export function AttachmentsSection({ cardId, currentCoverId, refreshTrigger, onC
                                 key={attachment.id}
                                 className="flex items-center gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors group"
                             >
-                                {getFileIcon(attachment.mimetype)}
+                                {getFileIcon(attachment.mimeType)}
                                 <div className="flex-1 min-w-0">
                                     <a
                                         href={`${API_URL}/${attachment.url}`}
-                                        download={attachment.originalName}
+                                        download={attachment.name}
                                         className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate block"
                                     >
-                                        {attachment.originalName}
+                                        {attachment.name}
                                     </a>
                                     <p className="text-xs text-gray-500">
                                         {formatFileSize(attachment.size)} • {new Date(attachment.createdAt).toLocaleDateString('fr-FR')}

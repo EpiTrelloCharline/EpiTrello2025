@@ -11,7 +11,9 @@ import {
   useSensors,
   useSensor,
   PointerSensor,
-  KeyboardSensor
+  KeyboardSensor,
+  closestCorners,
+  MeasuringStrategy
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -27,6 +29,8 @@ import BoardSettingsMenu, { getTextColor } from './BoardSettingsMenu';
 import { SearchModal } from '@/app/components/SearchModal';
 import { NotificationBell } from '@/app/components/NotificationBell';
 import { FilterPopover, DateFilterType } from './FilterPopover';
+import { useDragAndDrop } from '@/app/hooks/useDragAndDrop';
+import { DragOverlayComponent } from './DragOverlayComponent';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -41,6 +45,9 @@ type Card = {
   members?: User[]; // Card members are User objects from the API
   dueDate?: string | null;
   isDone?: boolean;
+  coverColor?: string | null;
+  coverUrl?: string;
+  coverSize?: string;
 };
 
 type Board = {
@@ -58,7 +65,6 @@ export default function BoardPage() {
   const [lists, setLists] = useState<List[]>([]);
   const [cardsByList, setCardsByList] = useState<Record<string, Card[]>>({});
   const [title, setTitle] = useState('');
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [previousCardsByList, setPreviousCardsByList] = useState<Record<string, Card[]>>({});
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,13 +94,34 @@ export default function BoardPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8, // Increased for better touch support
       },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Advanced Drag & Drop hook
+  const {
+    activeId,
+    activeType,
+    activeItem,
+    isSyncing,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel,
+    findCard,
+    findListContainingCard,
+  } = useDragAndDrop({
+    lists,
+    cardsByList,
+    boardId: params?.id || '',
+    setLists,
+    setCardsByList,
+    isFiltering,
+  });
 
   const fetchBoardData = useCallback(() => {
     if (!token || !params?.id) return;
@@ -459,7 +486,7 @@ export default function BoardPage() {
     );
   }, [cardsByList, cardMatchesFilters]);
 
-  // Helper: Find card location in state
+  // Helper: Find card location in state (kept for other functions)
   function findCardLocation(
     cardId: string,
     state: Record<string, Card[]>
@@ -471,171 +498,6 @@ export default function BoardPage() {
       }
     }
     return null;
-  }
-
-  // Helper: Compute new position based on surrounding cards
-  function computeNewPosition(cards: Card[], index: number): number {
-    if (cards.length === 0) return 1;
-    if (index === 0) {
-      // Before first card
-      const firstPos = parseFloat(cards[0].position);
-      return firstPos - 1;
-    }
-    if (index >= cards.length) {
-      // After last card
-      const lastPos = parseFloat(cards[cards.length - 1].position);
-      return lastPos + 1;
-    }
-    // Between two cards
-    const prevPos = parseFloat(cards[index - 1].position);
-    const nextPos = parseFloat(cards[index].position);
-    return (prevPos + nextPos) / 2;
-  }
-
-  // Helper: Recalculate all positions in a list (normalized to 1, 2, 3, ...)
-  function normalizeCardPositions(cards: Card[]): CardPositionUpdate[] {
-    return cards.map((card, index) => ({
-      cardId: card.id,
-      listId: card.listId,
-      position: index + 1
-    }));
-  }
-
-  // Unified drag handler for both lists and cards
-  function handleDragStart(event: DragStartEvent) {
-    const draggedId = event.active.id as string;
-
-    // Check if it's a card
-    const cardLocation = findCardLocation(draggedId, cardsByList);
-    if (cardLocation) {
-      setActiveCardId(draggedId);
-      setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
-    }
-    // If it's a list, we don't need to do anything special
-  }
-
-  async function handleDragEnd(event: DragEndEvent) {
-    if (isFiltering) return; // Disable drag when filtering
-
-    const { active, over } = event;
-    if (!over) return;
-
-    const draggedId = active.id as string;
-    const overId = over.id as string;
-
-    // Check if we're dragging a card
-    const cardLocation = findCardLocation(draggedId, cardsByList);
-
-    if (cardLocation) {
-      // CARD DRAGGING
-      setActiveCardId(null);
-
-      const { listId: sourceListId, index: sourceIndex } = cardLocation;
-      let targetListId: string;
-      let targetIndex: number;
-
-      // Check if dropping over another card
-      const targetCardLocation = findCardLocation(overId, cardsByList);
-
-      if (targetCardLocation) {
-        targetListId = targetCardLocation.listId;
-        targetIndex = targetCardLocation.index;
-      } else if (overId.startsWith('list-')) {
-        targetListId = overId.replace('list-', '');
-        const targetCards = cardsByList[targetListId] || [];
-        targetIndex = targetCards.length;
-      } else {
-        return;
-      }
-
-      if (sourceListId === targetListId && sourceIndex === targetIndex) return;
-
-      // Optimistic update
-      const newState = { ...cardsByList };
-      const sourceCards = [...(newState[sourceListId] || [])];
-      const [movedCard] = sourceCards.splice(sourceIndex, 1);
-      movedCard.listId = targetListId;
-
-      if (sourceListId === targetListId) {
-        const adjustedIndex = targetIndex > sourceIndex ? targetIndex - 1 : targetIndex;
-        sourceCards.splice(adjustedIndex, 0, movedCard);
-        newState[sourceListId] = sourceCards;
-      } else {
-        newState[sourceListId] = sourceCards;
-        const targetCards = [...(newState[targetListId] || [])];
-        targetCards.splice(targetIndex, 0, movedCard);
-        newState[targetListId] = targetCards;
-      }
-
-      // Update positions in state for consistency
-      if (sourceListId === targetListId) {
-        newState[sourceListId] = newState[sourceListId].map((c, i) => ({ ...c, position: String(i + 1) }));
-      } else {
-        newState[sourceListId] = newState[sourceListId].map((c, i) => ({ ...c, position: String(i + 1) }));
-        newState[targetListId] = newState[targetListId].map((c, i) => ({ ...c, position: String(i + 1) }));
-      }
-
-      setCardsByList(newState);
-
-      // Build batch update for all affected cards
-      const cardsToUpdate: CardPositionUpdate[] = [];
-      
-      // Add all cards from source list with updated positions
-      newState[sourceListId].forEach((card, index) => {
-        cardsToUpdate.push({
-          cardId: card.id,
-          listId: sourceListId,
-          position: index + 1
-        });
-      });
-
-      // If moved to a different list, add cards from target list
-      if (sourceListId !== targetListId) {
-        newState[targetListId].forEach((card, index) => {
-          cardsToUpdate.push({
-            cardId: card.id,
-            listId: targetListId,
-            position: index + 1
-          });
-        });
-      }
-
-      try {
-        await batchMoveCards(cardsToUpdate, params?.id);
-      } catch (error) {
-        console.error('Failed to batch move cards:', error);
-        setCardsByList(previousCardsByList);
-        alert('Échec du déplacement de la carte. Les modifications ont été annulées.');
-      }
-    } else {
-      // LIST DRAGGING
-      if (active.id === over.id) return;
-
-      const oldIndex = lists.findIndex(l => l.id === active.id);
-      if (oldIndex === -1) return;
-
-      const newIndex = lists.findIndex(l => l.id === over.id);
-      if (newIndex === -1) return;
-
-      const next = arrayMove(lists, oldIndex, newIndex);
-      const updated = next.map((l, i) => ({ ...l, position: i + 1 }));
-      setLists(updated);
-
-      // Build batch update for all lists with new positions
-      const listsToUpdate: ListPositionUpdate[] = updated.map(l => ({
-        listId: l.id,
-        position: l.position
-      }));
-
-      try {
-        await batchMoveLists(params?.id as string, listsToUpdate);
-      } catch (error) {
-        console.error('Failed to batch move lists:', error);
-        // Rollback on error
-        setLists(lists);
-        alert('Échec du déplacement de la liste. Les modifications ont été annulées.');
-      }
-    }
   }
 
   // Handle card deletion
@@ -881,8 +743,16 @@ export default function BoardPage() {
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
         <DndContext
           sensors={sensors}
+          collisionDetection={closestCorners}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.Always,
+            },
+          }}
         >
           <div className="h-full flex items-start gap-4">
             {isLoading ? (
@@ -907,6 +777,8 @@ export default function BoardPage() {
                     onDeleteList={handleDeleteList}
                     isDragDisabled={isFiltering}
                     boardId={params.id}
+                    isCardDragging={activeType === 'card'}
+                    activeCardId={activeId as string}
                   />
                 ))}
               </SortableContext>
@@ -942,7 +814,25 @@ export default function BoardPage() {
               )}
             </div>
           </div>
+
+          {/* Drag Overlay for smooth visual feedback */}
+          <DragOverlayComponent
+            activeType={activeType}
+            activeItem={activeItem}
+            cardCount={activeType === 'list' && activeId ? (cardsByList[activeId as string] || []).length : 0}
+          />
         </DndContext>
+
+        {/* Syncing indicator */}
+        {isSyncing && (
+          <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Synchronisation...
+          </div>
+        )}
       </div>
 
       {selectedCard && (
@@ -998,7 +888,7 @@ export default function BoardPage() {
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, onUpdateList, onDeleteList, isDragDisabled, boardId }: {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, onUpdateList, onDeleteList, isDragDisabled, boardId, isCardDragging, activeCardId }: {
   id: string;
   title: string;
   cards: Card[];
@@ -1010,10 +900,16 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   onDeleteList: (listId: string) => void;
   isDragDisabled: boolean;
   boardId: string;
+  isCardDragging?: boolean;
+  activeCardId?: string;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-  const { setNodeRef: setDroppableRef } = useDroppable({ id: `list-${id}` });
-  const style = { transform: CSS.Translate.toString(transform), transition };
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: `list-${id}` });
+  const style = { 
+    transform: CSS.Translate.toString(transform), 
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
   const [isAdding, setIsAdding] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -1191,7 +1087,12 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
         </div>
       )}
 
-      <div ref={setDroppableRef} className="space-y-2 overflow-y-auto flex-1 min-h-[100px] px-1 custom-scrollbar">
+      <div 
+        ref={setDroppableRef} 
+        className={`space-y-2 overflow-y-auto flex-1 min-h-[100px] px-1 custom-scrollbar rounded-lg transition-colors duration-200 ${
+          isOver && isCardDragging ? 'bg-blue-100/50 ring-2 ring-blue-400 ring-inset' : ''
+        }`}
+      >
         <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
           {Array.isArray(cards) && cards.map((card) => (
             <DraggableCard
@@ -1202,6 +1103,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
               onUpdate={onUpdateCard}
               onClick={() => onCardClick(card)}
               isDragDisabled={isDragDisabled}
+              isDragOverlay={activeCardId === card.id}
               onLabelsUpdated={() => {
                 // Refetch cards to get updated labels
                 getCardsByList(id).then(result => {
@@ -1213,6 +1115,13 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
             />
           ))}
         </SortableContext>
+        
+        {/* Empty state indicator when dragging over empty list */}
+        {cards.length === 0 && isOver && isCardDragging && (
+          <div className="h-16 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50/50 flex items-center justify-center">
+            <span className="text-sm text-blue-500">Déposer ici</span>
+          </div>
+        )}
       </div>
 
       <div className="mt-2 px-1">
