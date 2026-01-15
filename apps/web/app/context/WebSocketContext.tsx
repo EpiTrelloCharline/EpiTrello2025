@@ -15,8 +15,8 @@ interface WebSocketContextType {
 const WebSocketContext = createContext<WebSocketContextType>({
   socket: null,
   isConnected: false,
-  joinBoard: () => {},
-  leaveBoard: () => {},
+  joinBoard: () => { },
+  leaveBoard: () => { },
   startEditingCard: async () => ({ success: false }),
   endEditingCard: async () => ({ success: false }),
 });
@@ -29,8 +29,8 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     // Get token from localStorage
-    const token = localStorage.getItem('token');
-    
+    const token = localStorage.getItem('accessToken');
+
     // Initialize socket connection
     const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000', {
       auth: {
@@ -51,6 +51,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     socketInstance.on('error', (error) => {
       console.error('WebSocket error:', error);
+    });
+
+    socketInstance.on('connect_error', (error) => {
+      console.error('WebSocket connection error details:', error.message, error);
     });
 
     setSocket(socketInstance);
