@@ -57,4 +57,22 @@ export class ActivitiesService {
             },
         });
     }
+
+    async getCardActivities(cardId: string, limit: number = 20, offset: number = 0) {
+        return this.prisma.activity.findMany({
+            where: { entityId: cardId },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            skip: offset,
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+    }
 }

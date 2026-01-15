@@ -28,4 +28,12 @@ export class UpdateCardDto {
     @IsOptional()
     @IsBoolean()
     isDone?: boolean;
+
+    @IsOptional()
+    @IsString()
+    priority?: string;
+
+    @IsOptional()
+    @IsString()
+    size?: string;
 }

@@ -9,6 +9,7 @@ import { UpdateCardDto } from './dto/update-card.dto';
 import { BatchMoveCardsDto } from './dto/batch-move-cards.dto';
 import { LabelsService } from '../labels/labels.service';
 import { AssignLabelDto } from '../labels/dto/assign-label.dto';
+import { ActivitiesService } from '../activities/activities.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('cards')
@@ -16,7 +17,21 @@ export class CardsController {
     constructor(
         private readonly cardsService: CardsService,
         private readonly labelsService: LabelsService,
+        private readonly activitiesService: ActivitiesService,
     ) { }
+
+    @Get(':id/activities')
+    getActivities(
+        @Param('id') id: string,
+        @Query('limit') limit: string,
+        @Query('offset') offset: string
+    ) {
+        return this.activitiesService.getCardActivities(
+            id,
+            limit ? parseInt(limit) : 20,
+            offset ? parseInt(offset) : 0
+        );
+    }
 
     @UseGuards(BoardReadGuard)
     @Get()
