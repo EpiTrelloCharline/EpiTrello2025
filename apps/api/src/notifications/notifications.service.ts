@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { NotificationType } from '@prisma/client';
+import { WebSocketsGateway } from '../websockets/websockets.gateway';
 
 export interface CreateNotificationDto {
   type: NotificationType;
@@ -12,13 +13,17 @@ export interface CreateNotificationDto {
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => WebSocketsGateway))
+    private webSocketsGateway: WebSocketsGateway,
+  ) { }
 
   /**
    * Create a notification for a user
    */
   async createNotification(data: CreateNotificationDto) {
-    return this.prisma.notification.create({
+    const notification = await this.prisma.notification.create({
       data: {
         type: data.type,
         message: data.message,
@@ -42,6 +47,19 @@ export class NotificationsService {
         },
       },
     });
+
+    // Emit WebSocket event - notification_new
+    this.webSocketsGateway.emitNotificationNew(data.userId, {
+      id: notification.id,
+      type: notification.type,
+      message: notification.message,
+      boardId: notification.boardId,
+      entityId: notification.entityId,
+      isRead: notification.isRead,
+      createdAt: notification.createdAt,
+    });
+
+    return notification;
   }
 
   /**

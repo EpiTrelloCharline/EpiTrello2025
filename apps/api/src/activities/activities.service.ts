@@ -1,14 +1,13 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { ActivityType } from '@prisma/client';
-import { BoardsGateway } from '../boards/boards.gateway';
+import { WebSocketsGateway } from '../websockets/websockets.gateway';
 
 @Injectable()
 export class ActivitiesService {
     constructor(
         private prisma: PrismaService,
-        @Inject(forwardRef(() => BoardsGateway))
-        private boardsGateway: BoardsGateway,
+        private webSocketsGateway: WebSocketsGateway,
     ) { }
 
     async logActivity(
@@ -38,7 +37,7 @@ export class ActivitiesService {
         });
 
         // Emit WebSocket event
-        this.boardsGateway.emitActivityCreated(boardId, { activity });
+        this.webSocketsGateway.emitActivityCreated(boardId, { activity });
 
         return activity;
     }

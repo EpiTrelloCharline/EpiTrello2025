@@ -418,7 +418,12 @@ export default function BoardPage() {
     const after = lists.length ? lists[lists.length - 1].id : undefined;
     const r = await api('/lists', { method: 'POST', body: JSON.stringify({ boardId: params.id, title, after }) });
     const l = await r.json();
-    setLists(prev => [...prev, l]);
+    
+    // Only add locally if WebSocket is not connected (fallback)
+    // The WebSocket 'listCreated' event will handle the update when connected
+    if (!socket?.connected) {
+      setLists(prev => [...prev, l]);
+    }
     setTitle('');
   }
 

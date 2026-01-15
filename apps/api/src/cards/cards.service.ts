@@ -11,7 +11,7 @@ import { BatchMoveCardsDto } from "./dto/batch-move-cards.dto";
 import { ActivitiesService } from "../activities/activities.service";
 import { ActivityType, NotificationType } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
-import { BoardsGateway } from "../boards/boards.gateway";
+import { WebSocketsGateway } from "../websockets/websockets.gateway";
 
 @Injectable()
 export class CardsService {
@@ -19,7 +19,7 @@ export class CardsService {
     private prisma: PrismaService,
     private activitiesService: ActivitiesService,
     private notificationsService: NotificationsService,
-    private boardsGateway: BoardsGateway,
+    private webSocketsGateway: WebSocketsGateway,
   ) { }
 
   private async assertBoardMember(userId: string, listId: string) {
@@ -126,9 +126,13 @@ export class CardsService {
     );
 
     // Emit WebSocket event
-    this.boardsGateway.emitCardCreated(list.boardId, {
+    this.webSocketsGateway.emitCardCreated(list.boardId, {
+      cardId: card.id,
       card,
       listId: list.id,
+      boardId: list.boardId,
+      userId,
+      timestamp: new Date(),
     });
 
     return card;
@@ -204,11 +208,15 @@ export class CardsService {
       );
     }
 
-    // Emit WebSocket event
-    this.boardsGateway.emitCardMoved(sourceList.boardId, {
+    // Emit WebSocket event - card_move
+    this.webSocketsGateway.emitCardMove(sourceList.boardId, {
+      cardId: updatedCard.id,
+      sourceListId: sourceList.id,
+      targetListId: targetListId,
+      newPosition: newPosition,
       card: updatedCard,
-      fromListId: sourceList.id,
-      toListId: targetListId,
+      userId,
+      timestamp: new Date(),
     });
 
     return updatedCard;
@@ -261,8 +269,12 @@ export class CardsService {
     }
 
     // Emit WebSocket event
-    this.boardsGateway.emitCardUpdated(card.list.boardId, {
+    this.webSocketsGateway.emitCardUpdated(card.list.boardId, {
+      cardId: card.id,
       card: updatedCard,
+      boardId: card.list.boardId,
+      userId,
+      timestamp: new Date(),
     });
 
     return updatedCard;
@@ -304,9 +316,12 @@ export class CardsService {
     );
 
     // Emit WebSocket event
-    this.boardsGateway.emitCardDeleted(card.list.boardId, {
+    this.webSocketsGateway.emitCardDeleted(card.list.boardId, {
       cardId: card.id,
       listId: card.listId,
+      boardId: card.list.boardId,
+      userId,
+      timestamp: new Date(),
     });
 
     return updatedCard;
@@ -344,9 +359,11 @@ export class CardsService {
     await this.prisma.card.delete({ where: { id: cardId } });
 
     // Emit WebSocket event
-    this.boardsGateway.emitCardDeleted(card.list.boardId, {
+    this.webSocketsGateway.emitCardDeleted(card.list.boardId, {
       cardId: card.id,
       listId: card.listId,
+      boardId: card.list.boardId,
+      timestamp: new Date(),
     });
 
     return { success: true };
@@ -423,9 +440,13 @@ export class CardsService {
     );
 
     // Emit WebSocket event
-    this.boardsGateway.emitCardCreated(card.list.boardId, {
+    this.webSocketsGateway.emitCardCreated(card.list.boardId, {
+      cardId: created.id,
       card: created,
       listId: card.listId,
+      boardId: card.list.boardId,
+      userId,
+      timestamp: new Date(),
     });
 
     return created;
@@ -501,9 +522,10 @@ export class CardsService {
 
     // Emit WebSocket events for each affected board
     for (const boardId of boardIds) {
-      this.boardsGateway.emitBoardUpdated(boardId, {
-        type: 'batch-cards-moved',
-        cards: dto.cards
+      this.webSocketsGateway.emitBoardUpdated(boardId, {
+        boardId,
+        board: { type: 'batch-cards-moved', cards: dto.cards },
+        timestamp: new Date(),
       });
     }
 
