@@ -78,7 +78,7 @@ export async function deleteCard(cardId: string) {
   return res.json();
 }
 
-export async function updateCard(cardId: string, data: { title?: string; description?: string; isArchived?: boolean; listId?: string; position?: string }) {
+export async function updateCard(cardId: string, data: { title?: string; description?: string; isArchived?: boolean; listId?: string; position?: string; dueDate?: string; isDone?: boolean; priority?: string; size?: string }) {
   const res = await api(`/cards/${cardId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
@@ -240,7 +240,7 @@ export interface GetNotificationsParams {
 
 export async function getNotifications(params?: GetNotificationsParams): Promise<NotificationsResponse> {
   const queryParams = new URLSearchParams();
-  
+
   if (params?.unreadOnly !== undefined) {
     queryParams.append('unreadOnly', String(params.unreadOnly));
   }
@@ -253,7 +253,7 @@ export async function getNotifications(params?: GetNotificationsParams): Promise
   if (params?.offset !== undefined) {
     queryParams.append('offset', String(params.offset));
   }
-  
+
   const queryString = queryParams.toString();
   const res = await api(`/notifications${queryString ? `?${queryString}` : ''}`);
   return res.json();
@@ -298,6 +298,27 @@ export interface Comment {
     name: string | null;
     avatar: string | null;
   };
+}
+
+export interface Activity {
+  id: string;
+  type: 'CREATE_CARD' | 'DELETE_CARD' | 'MOVE_CARD' | 'UPDATE_DESCRIPTION' | 'ADD_LABEL';
+  entityId: string;
+  details?: string;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+}
+
+export async function getCardActivities(cardId: string, limit: number = 20, offset: number = 0): Promise<Activity[]> {
+  const res = await api(`/cards/${cardId}/activities?limit=${limit}&offset=${offset}`);
+  if (!res.ok) {
+    throw new Error('Failed to load activities');
+  }
+  return res.json();
 }
 
 export interface CreateCommentDto {

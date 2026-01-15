@@ -6,7 +6,7 @@ import {
     getComments,
     createComment,
     updateComment,
-    deleteComment,
+    deleteComment
 } from '@/lib/api';
 
 /** Props of ActivitySection */
@@ -45,10 +45,10 @@ export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
         }
     }, [cardId]);
 
-    // Load comments on component mount
+    // Initial load
     useEffect(() => {
         loadComments();
-    }, [loadComments]);
+    }, [cardId, loadComments]);
 
     /**
      * Adds a new comment
@@ -91,6 +91,10 @@ export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
         }
     };
 
+    const sortedComments = [...comments].sort((a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
     return (
         <div className="mt-8 border-t border-gray-300 pt-6">
             {/* Section Header */}
@@ -98,7 +102,9 @@ export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h3 className="font-semibold text-[#172b4d]">Activité</h3>
+                <div className="flex-1 flex justify-between items-center">
+                    <h3 className="font-semibold text-[#172b4d]">Activité</h3>
+                </div>
             </div>
 
             {/* Comment Input */}
@@ -115,7 +121,7 @@ export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
                 {isLoading && (
                     <div className="text-center py-8">
                         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <p className="text-sm text-gray-500 mt-2">Chargement des commentaires...</p>
+                        <p className="text-sm text-gray-500 mt-2">Chargement...</p>
                     </div>
                 )}
 
@@ -131,17 +137,16 @@ export function ActivitySection({ cardId, currentUser }: ActivitySectionProps) {
                     </div>
                 )}
 
-                {!isLoading && !error && comments.length === 0 && (
+                {!isLoading && !error && sortedComments.length === 0 && (
                     <div className="text-center py-8">
                         <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                         <p className="text-sm text-gray-500">Aucun commentaire pour le moment</p>
-                        <p className="text-xs text-gray-400 mt-1">Soyez le premier à commenter cette carte</p>
                     </div>
                 )}
 
-                {!isLoading && !error && comments.map(comment => (
+                {!isLoading && !error && sortedComments.map(comment => (
                     <CommentItem
                         key={comment.id}
                         comment={comment}

@@ -64,7 +64,7 @@ export function CommentItem({ comment, currentUserId, onUpdate, onDelete }: Comm
         if (diffMins < 60) return `il y a ${diffMins} min`;
         if (diffHours < 24) return `il y a ${diffHours}h`;
         if (diffDays < 7) return `il y a ${diffDays}j`;
-        
+
         return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
     };
 
@@ -87,23 +87,23 @@ export function CommentItem({ comment, currentUserId, onUpdate, onDelete }: Comm
 
             {/* Comment Content */}
             <div className="flex-1 min-w-0">
-                <div className="bg-white rounded-lg border border-gray-200 p-3">
-                    {/* Header */}
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="font-semibold text-sm text-[#172b4d]">
-                            {comment.user.name || 'Utilisateur'}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                            {getRelativeTime(comment.createdAt)}
-                        </span>
-                        {comment.updatedAt !== comment.createdAt && (
-                            <span className="text-xs text-gray-400">(modifié)</span>
-                        )}
-                    </div>
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-sm text-[#172b4d]">
+                        {comment.user.name || 'Utilisateur'}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                        {getRelativeTime(comment.createdAt)}
+                    </span>
+                    {comment.updatedAt !== comment.createdAt && (
+                        <span className="text-xs text-gray-400">(modifié)</span>
+                    )}
+                </div>
 
+                <div className="bg-white rounded-lg border border-gray-200 p-2 shadow-sm">
                     {/* Content */}
                     {isEditing ? (
-                        <div className="mt-2">
+                        <div className="">
                             <textarea
                                 value={editContent}
                                 onChange={(e) => setEditContent(e.target.value)}
@@ -131,25 +131,23 @@ export function CommentItem({ comment, currentUserId, onUpdate, onDelete }: Comm
                             </div>
                         </div>
                     ) : (
-                        <p className="text-sm text-[#172b4d] whitespace-pre-wrap break-words">
+                        <p className="text-sm text-[#172b4d] whitespace-pre-wrap break-words px-1">
                             {comment.content}
                         </p>
                     )}
                 </div>
-
-                {/* Actions - Only show for own comments */}
-                {isOwnComment && !isEditing && (
-                    <div className="mt-1 flex gap-2 text-xs">
+                {/* Actions - Always show buttons for debugging */}
+                {!isEditing && (
+                    <div className="mt-2 flex items-center gap-2">
                         <button
                             onClick={() => setIsEditing(true)}
-                            className="text-gray-600 hover:text-gray-800 hover:underline transition-colors"
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs font-medium transition-colors"
                         >
                             Modifier
                         </button>
-                        <span className="text-gray-300">•</span>
                         <button
                             onClick={() => setShowDeleteConfirm(true)}
-                            className="text-gray-600 hover:text-red-600 hover:underline transition-colors"
+                            className="bg-gray-100 hover:bg-red-100 text-gray-700 hover:text-red-700 px-3 py-1.5 rounded text-xs font-medium transition-colors"
                         >
                             Supprimer
                         </button>

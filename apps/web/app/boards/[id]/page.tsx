@@ -48,6 +48,8 @@ type Card = {
   coverColor?: string | null;
   coverUrl?: string;
   coverSize?: string;
+  priority?: string | null;
+  size?: string | null;
 };
 
 type Board = {
@@ -291,19 +293,19 @@ export default function BoardPage() {
     // Handle batch updates from other clients
     const handleBoardUpdated = (data: { type: string; cards?: { cardId: string; listId: string; position: number }[]; lists?: { listId: string; position: number }[] }) => {
       console.log('Board updated event:', data);
-      
+
       if (data.type === 'batch-cards-moved' && data.cards) {
         // Update card positions
         setCardsByList(prev => {
           const newState = { ...prev };
-          
+
           for (const update of data.cards!) {
             // Find and update card position
             for (const listId of Object.keys(newState)) {
               const cardIndex = newState[listId].findIndex(c => c.id === update.cardId);
               if (cardIndex !== -1) {
                 const card = newState[listId][cardIndex];
-                
+
                 // If card moved to different list
                 if (card.listId !== update.listId) {
                   // Remove from old list
@@ -319,16 +321,16 @@ export default function BoardPage() {
               }
             }
           }
-          
+
           // Sort cards by position in each list
           for (const listId of Object.keys(newState)) {
             newState[listId] = newState[listId].sort((a, b) => parseFloat(a.position) - parseFloat(b.position));
           }
-          
+
           return newState;
         });
       }
-      
+
       if (data.type === 'batch-lists-moved' && data.lists) {
         // Update list positions
         setLists(prev => {
@@ -418,7 +420,7 @@ export default function BoardPage() {
     const after = lists.length ? lists[lists.length - 1].id : undefined;
     const r = await api('/lists', { method: 'POST', body: JSON.stringify({ boardId: params.id, title, after }) });
     const l = await r.json();
-    
+
     // Only add locally if WebSocket is not connected (fallback)
     // The WebSocket 'listCreated' event will handle the update when connected
     if (!socket?.connected) {
@@ -611,7 +613,7 @@ export default function BoardPage() {
     if (!board || !newTitle.trim()) return;
 
     const previousBoard = { ...board };
-    
+
     // Optimistic update
     setBoard(prev => prev ? { ...prev, title: newTitle } : prev);
 
@@ -660,7 +662,7 @@ export default function BoardPage() {
       {/* Board Header */}
       <div className="relative z-50 h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 gap-4" style={{ color: textColor }}>
         <div className="font-bold text-lg">Epi Trello</div>
-        
+
         {/* Board Title */}
         {board && (
           <div className="font-semibold text-lg bg-white/10 px-3 py-1 rounded" title={board.title}>
@@ -930,8 +932,8 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: `list-${id}` });
-  const style = { 
-    transform: CSS.Translate.toString(transform), 
+  const style = {
+    transform: CSS.Translate.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
@@ -1112,11 +1114,10 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
         </div>
       )}
 
-      <div 
-        ref={setDroppableRef} 
-        className={`space-y-2 overflow-y-auto flex-1 min-h-[100px] px-1 custom-scrollbar rounded-lg transition-colors duration-200 ${
-          isOver && isCardDragging ? 'bg-blue-100/50 ring-2 ring-blue-400 ring-inset' : ''
-        }`}
+      <div
+        ref={setDroppableRef}
+        className={`space-y-2 overflow-y-auto flex-1 min-h-[100px] px-1 custom-scrollbar rounded-lg transition-colors duration-200 ${isOver && isCardDragging ? 'bg-blue-100/50 ring-2 ring-blue-400 ring-inset' : ''
+          }`}
       >
         <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
           {Array.isArray(cards) && cards.map((card) => (
@@ -1140,7 +1141,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
             />
           ))}
         </SortableContext>
-        
+
         {/* Empty state indicator when dragging over empty list */}
         {cards.length === 0 && isOver && isCardDragging && (
           <div className="h-16 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50/50 flex items-center justify-center">

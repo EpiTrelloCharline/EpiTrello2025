@@ -28,6 +28,8 @@ type Card = {
     labels?: Label[];
     dueDate?: string | null;
     isDone?: boolean;
+    priority?: string | null;
+    size?: string | null;
 };
 
 type CardDetailModalProps = {
@@ -43,6 +45,8 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     const [description, setDescription] = useState(card.description || '');
     const [dueDate, setDueDate] = useState(card.dueDate || '');
     const [isDone, setIsDone] = useState(card.isDone || false);
+    const [priority, setPriority] = useState(card.priority || '');
+    const [size, setSize] = useState(card.size || '');
     const [showLabelPicker, setShowLabelPicker] = useState(false);
     const [showCoverPopup, setShowCoverPopup] = useState(false);
     const [isVisible, setIsVisible] = useState(false);
@@ -134,7 +138,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     }, [socket, card.id, currentUser.id]);
 
     const handleSave = async () => {
-        await onSave({ title, description, dueDate: dueDate || undefined, isDone } as any);
+        await onSave({ title, description, dueDate: dueDate || undefined, isDone, priority, size } as any);
     };
 
     if (typeof document === 'undefined') return null;
@@ -261,6 +265,47 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                     <div className="flex flex-col md:flex-row gap-8">
                         {/* Main Content */}
                         <div className="flex-1">
+                            {/* Priority and Size Section */}
+                            <div className="mb-6 flex gap-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        <h3 className="font-semibold text-[#172b4d]">Priorité</h3>
+                                    </div>
+                                    <div className="ml-7">
+                                        <select
+                                            value={priority}
+                                            onChange={(e) => setPriority(e.target.value)}
+                                            className="w-full bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded px-3 py-2 text-sm text-[#172b4d] transition-colors focus:ring-2 focus:ring-blue-600 focus:outline-none appearance-none"
+                                        >
+                                            <option value="">Aucune</option>
+                                            <option value="Low">Basse</option>
+                                            <option value="Medium">Moyenne</option>
+                                            <option value="High">Haute</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        <h3 className="font-semibold text-[#172b4d]">Taille</h3>
+                                    </div>
+                                    <div className="ml-7">
+                                        <input
+                                            type="text"
+                                            value={size}
+                                            onChange={(e) => setSize(e.target.value)}
+                                            placeholder="Ex: 5, XS..."
+                                            className="w-full bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded px-3 py-2 text-sm text-[#172b4d] transition-colors focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Description Section */}
                             <div className="mb-6">
                                 <div className="flex items-center gap-3 mb-2">
