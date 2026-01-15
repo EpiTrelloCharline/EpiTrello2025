@@ -1,5 +1,5 @@
 // workspaces.controller.ts
-import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -12,7 +12,7 @@ import { InviteMemberDto } from './dto/invite-member.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('workspaces')
 export class WorkspacesController {
-  constructor(private svc: WorkspacesService) {}
+  constructor(private svc: WorkspacesService) { }
 
   @Get()
   list(@Request() req: any) { return this.svc.listForUser(req.user.id); }
@@ -30,6 +30,25 @@ export class WorkspacesController {
   @Post(':id/invite')
   invite(@Request() req: any, @Param('id') id: string, @Body() dto: InviteMemberDto) {
     return this.svc.inviteByEmail(req.user.id, id, dto.email, dto.role as any);
+  }
+
+  @Patch(':id/members/:memberId')
+  updateMemberRole(
+    @Request() req: any,
+    @Param('id') workspaceId: string,
+    @Param('memberId') memberId: string,
+    @Body() dto: { role: 'ADMIN' | 'MEMBER' | 'OBSERVER' }
+  ) {
+    return this.svc.updateMemberRole(req.user.id, workspaceId, memberId, dto.role);
+  }
+
+  @Delete(':id/members/:memberId')
+  removeMember(
+    @Request() req: any,
+    @Param('id') workspaceId: string,
+    @Param('memberId') memberId: string
+  ) {
+    return this.svc.removeMember(req.user.id, workspaceId, memberId);
   }
 }
 

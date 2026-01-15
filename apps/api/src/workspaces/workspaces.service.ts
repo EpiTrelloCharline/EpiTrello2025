@@ -60,5 +60,62 @@ export class WorkspacesService {
       update: { role },
     });
   }
+
+  async updateMemberRole(userId: string, workspaceId: string, memberId: string, newRole: 'ADMIN' | 'MEMBER' | 'OBSERVER') {
+    // Verify permissions: only OWNER/ADMIN can update roles
+    const me = await this.prisma.workspaceMember.findFirst({ where: { workspaceId, userId } });
+    if (!me || !['OWNER', 'ADMIN'].includes(me.role)) {
+      throw new ForbiddenException('No permission to update member roles');
+    }
+
+    // Get the member to update
+    const targetMember = await this.prisma.workspaceMember.findUnique({
+      where: { id: memberId },
+      include: { user: true }
+    });
+
+    if (!targetMember || targetMember.workspaceId !== workspaceId) {
+      throw new NotFoundException('Member not found');
+    }
+
+    // Cannot change OWNER role
+    if (targetMember.role === 'OWNER') {
+      throw new ForbiddenException('Cannot change owner role');
+    }
+
+    return this.prisma.workspaceMember.update({
+      where: { id: memberId },
+      data: { role: newRole },
+      include: { user: true }
+    });
+  }
+
+  async removeMember(userId: string, workspaceId: string, memberId: string) {
+    // Verify permissions: only OWNER/ADMIN can remove members
+    const me = await this.prisma.workspaceMember.findFirst({ where: { workspaceId, userId } });
+    if (!me || !['OWNER', 'ADMIN'].includes(me.role)) {
+      throw new ForbiddenException('No permission to remove members');
+    }
+
+    // Get the member to remove
+    const targetMember = await this.prisma.workspaceMember.findUnique({
+      where: { id: memberId }
+    });
+
+    if (!targetMember || targetMember.workspaceId !== workspaceId) {
+      throw new NotFoundException('Member not found');
+    }
+
+    // Cannot remove OWNER
+    if (targetMember.role === 'OWNER') {
+      throw new ForbiddenException('Cannot remove workspace owner');
+    }
+
+    await this.prisma.workspaceMember.delete({
+      where: { id: memberId }
+    });
+
+    return { message: 'Member removed successfully' };
+  }
 }
 
