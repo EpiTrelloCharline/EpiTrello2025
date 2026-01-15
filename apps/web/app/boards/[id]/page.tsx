@@ -18,7 +18,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { api, getCardsByList, createCard, moveCard, updateCard, updateList, deleteList, batchMoveCards, batchMoveLists, CardPositionUpdate, ListPositionUpdate } from '@/lib/api';
+import { api, getCardsByList, createCard, moveCard, updateCard, updateList, deleteList, batchMoveCards, batchMoveLists, updateBoard, CardPositionUpdate, ListPositionUpdate } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardMembers } from './BoardMembers';
@@ -599,18 +599,29 @@ export default function BoardPage() {
     if (!board) return;
 
     try {
-      const response = await api(`/boards/${board.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ backgroundColor, backgroundImage }),
-      });
-
-      if (response.ok) {
-        const updatedBoard = await response.json();
-        setBoard(updatedBoard);
-      }
+      const updatedBoard = await updateBoard(board.id, { backgroundColor, backgroundImage });
+      setBoard(updatedBoard);
     } catch (error) {
       console.error('Failed to update board background:', error);
       alert('Échec de la mise à jour de l\'apparence du board.');
+    }
+  }
+
+  async function handleTitleChange(newTitle: string) {
+    if (!board || !newTitle.trim()) return;
+
+    const previousBoard = { ...board };
+    
+    // Optimistic update
+    setBoard(prev => prev ? { ...prev, title: newTitle } : prev);
+
+    try {
+      const updatedBoard = await updateBoard(board.id, { title: newTitle });
+      setBoard(updatedBoard);
+    } catch (error) {
+      console.error('Failed to update board title:', error);
+      setBoard(previousBoard);
+      alert('Échec de la mise à jour du titre du board.');
     }
   }
 
@@ -649,6 +660,13 @@ export default function BoardPage() {
       {/* Board Header */}
       <div className="relative z-50 h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 gap-4" style={{ color: textColor }}>
         <div className="font-bold text-lg">Epi Trello</div>
+        
+        {/* Board Title */}
+        {board && (
+          <div className="font-semibold text-lg bg-white/10 px-3 py-1 rounded" title={board.title}>
+            {board.title}
+          </div>
+        )}
 
         {/* Board Members & Invite */}
         {board && (
@@ -681,9 +699,11 @@ export default function BoardPage() {
         {board && (
           <BoardSettingsMenu
             boardId={board.id}
+            boardTitle={board.title}
             currentBackgroundColor={board.backgroundColor}
             currentBackgroundImage={board.backgroundImage}
             onBackgroundChange={handleBackgroundChange}
+            onTitleChange={handleTitleChange}
           />
         )}
 

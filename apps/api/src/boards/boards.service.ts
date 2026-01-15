@@ -227,13 +227,23 @@ export class BoardsService {
       throw new ForbiddenException('Seuls les propriétaires et administrateurs peuvent modifier les paramètres du board');
     }
 
+    // Build update data dynamically
+    const updateData: { title?: string; backgroundColor?: string; backgroundImage?: string } = {};
+    
+    if (dto.title !== undefined) {
+      updateData.title = dto.title;
+    }
+    if (dto.backgroundColor !== undefined) {
+      updateData.backgroundColor = dto.backgroundColor;
+    }
+    if (dto.backgroundImage !== undefined) {
+      updateData.backgroundImage = dto.backgroundImage;
+    }
+
     // Update the board
     return this.prisma.board.update({
       where: { id: boardId },
-      data: {
-        backgroundColor: dto.backgroundColor,
-        backgroundImage: dto.backgroundImage,
-      },
+      data: updateData,
       include: {
         members: { include: { user: true } },
         labels: true,

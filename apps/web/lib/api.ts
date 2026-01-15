@@ -101,6 +101,15 @@ export async function deleteList(listId: string) {
   return res.json();
 }
 
+// Board
+export async function updateBoard(boardId: string, data: { title?: string; backgroundColor?: string | null; backgroundImage?: string | null }) {
+  const res = await api(`/boards/${boardId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
 // Checklists
 export async function getChecklists(cardId: string) {
   const res = await api(`/cards/${cardId}/checklists`);
