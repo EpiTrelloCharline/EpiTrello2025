@@ -186,6 +186,10 @@ enum NotificationType {
   MEMBER_ADDED
   MEMBER_REMOVED
   COMMENT_ADDED
+  ASSIGNED
+  MENTIONED
+  DUE_DATE_SOON
+  CHECKLIST_COMPLETED
 }
 
 model Notification {

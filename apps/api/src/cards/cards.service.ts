@@ -531,4 +531,134 @@ export class CardsService {
 
     return { success: true, updatedCount: dto.cards.length };
   }
+
+  /**
+   * Add a member to a card
+   */
+  async addMember(userId: string, cardId: string, memberUserId: string) {
+    const card = await this.assertCardAccess(userId, cardId);
+
+    // Check if the member is actually a board member
+    const isBoardMember = card.list.board.members.some(
+      (m) => m.userId === memberUserId
+    );
+    if (!isBoardMember && card.list.board.createdById !== memberUserId) {
+      throw new ForbiddenException("User is not a board member");
+    }
+
+    // Check if already assigned
+    const existingMember = await this.prisma.card.findFirst({
+      where: {
+        id: cardId,
+        members: { some: { id: memberUserId } },
+      },
+    });
+
+    if (existingMember) {
+      return { message: "User already assigned to card" };
+    }
+
+    // Add member to card
+    const updatedCard = await this.prisma.card.update({
+      where: { id: cardId },
+      data: {
+        members: {
+          connect: { id: memberUserId },
+        },
+      },
+      include: {
+        labels: { include: { label: true } },
+        members: true,
+      },
+    });
+
+    // Notify the assigned user
+    await this.notificationsService.notifyAssignment(
+      memberUserId,
+      userId,
+      cardId,
+      card.title,
+      card.list.boardId,
+    );
+
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardUpdated(card.list.boardId, {
+      cardId: updatedCard.id,
+      card: updatedCard,
+      boardId: card.list.boardId,
+    });
+
+    return updatedCard;
+  }
+
+  /**
+   * Remove a member from a card
+   */
+  async removeMember(userId: string, cardId: string, memberUserId: string) {
+    const card = await this.assertCardAccess(userId, cardId);
+
+    // Remove member from card
+    const updatedCard = await this.prisma.card.update({
+      where: { id: cardId },
+      data: {
+        members: {
+          disconnect: { id: memberUserId },
+        },
+      },
+      include: {
+        labels: { include: { label: true } },
+        members: true,
+      },
+    });
+
+    // Notify the removed user (if not removing themselves)
+    if (memberUserId !== userId) {
+      const removedBy = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true },
+      });
+
+      const removerName = removedBy?.name || removedBy?.email || 'Someone';
+
+      await this.notificationsService.createNotification({
+        type: NotificationType.MEMBER_REMOVED,
+        message: `${removerName} removed you from card "${card.title}"`,
+        userId: memberUserId,
+        boardId: card.list.boardId,
+        entityId: cardId,
+      });
+    }
+
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardUpdated(card.list.boardId, {
+      cardId: updatedCard.id,
+      card: updatedCard,
+      boardId: card.list.boardId,
+    });
+
+    return updatedCard;
+  }
+
+  /**
+   * Get card members
+   */
+  async getMembers(userId: string, cardId: string) {
+    const card = await this.assertCardAccess(userId, cardId);
+
+    const cardWithMembers = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        members: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    return cardWithMembers?.members || [];
+  }
 }

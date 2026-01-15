@@ -7,7 +7,10 @@ import { WebSocketsModule } from '../websockets/websockets.module';
 @Module({
   imports: [forwardRef(() => WebSocketsModule)],
   controllers: [NotificationsController],
-  providers: [NotificationsService, PrismaService],
+  providers: [
+    NotificationsService,
+    PrismaService,
+  ],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

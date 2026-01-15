@@ -55,6 +55,18 @@ export class NotificationsController {
   }
 
   /**
+   * GET /notifications/:id
+   * Get a single notification by ID
+   */
+  @Get(':id')
+  async getNotification(@Request() req, @Param('id') notificationId: string) {
+    return this.notificationsService.getNotificationById(
+      notificationId,
+      req.user.userId,
+    );
+  }
+
+  /**
    * PATCH /notifications/:id/read
    * Mark a notification as read
    */
@@ -91,5 +103,15 @@ export class NotificationsController {
       req.user.userId,
     );
     return { message: 'Notification deleted' };
+  }
+
+  /**
+   * DELETE /notifications/read
+   * Delete all read notifications
+   */
+  @Delete('read')
+  async deleteReadNotifications(@Request() req) {
+    await this.notificationsService.deleteReadNotifications(req.user.userId);
+    return { message: 'Read notifications deleted' };
   }
 }

@@ -37,8 +37,51 @@ enum NotificationType {
   LABEL_REMOVED     // Label retiré d'une carte
   MEMBER_ADDED      // Membre ajouté au board
   MEMBER_REMOVED    // Membre retiré du board
-  COMMENT_ADDED     // Commentaire ajouté (future feature)
+  COMMENT_ADDED     // Commentaire ajouté
+  ASSIGNED          // Utilisateur assigné à une carte
+  MENTIONED         // Utilisateur mentionné dans un commentaire
+  DUE_DATE_SOON     // Date d'échéance proche
+  CHECKLIST_COMPLETED // Checklist terminée
 }
+```
+
+## WebSocket (Push Notifications)
+
+Les notifications sont automatiquement poussées via WebSocket quand l'utilisateur est connecté.
+
+### Connexion
+
+```javascript
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3001/notifications', {
+  auth: {
+    token: 'votre-jwt-token'
+  }
+});
+```
+
+### Événements reçus
+
+| Événement | Description | Payload |
+|-----------|-------------|---------|
+| `notification` | Nouvelle notification | `{ id, type, message, ... }` |
+| `unreadCount` | Compteur mis à jour | `{ count: number }` |
+| `notificationRead` | Notification marquée lue | `{ notificationId }` |
+| `allNotificationsRead` | Toutes lues | `{}` |
+
+### Exemple d'utilisation
+
+```javascript
+socket.on('notification', (notification) => {
+  console.log('Nouvelle notification:', notification);
+  // Afficher une toast, mettre à jour l'UI, etc.
+});
+
+socket.on('unreadCount', ({ count }) => {
+  // Mettre à jour le badge de notifications
+  updateNotificationBadge(count);
+});
 ```
 
 ## Endpoints
@@ -205,6 +248,21 @@ Authorization: Bearer <token>
 - **Archivage de carte** (`CARD_DELETED`)
   - Notifié quand une carte est archivée
 
+### Assignation de membres
+
+- **Assignation à une carte** (`ASSIGNED`)
+  - L'utilisateur assigné reçoit une notification
+  - Auto-assignation ne déclenche pas de notification
+
+- **Retrait d'une carte** (`MEMBER_REMOVED`)
+  - L'utilisateur retiré reçoit une notification
+
+### Mentions
+
+- **Mention dans un commentaire** (`MENTIONED`)
+  - Format: `@userId` dans le contenu du commentaire
+  - L'utilisateur mentionné reçoit une notification
+
 ### Labels
 
 - **Ajout de label** (`LABEL_ADDED`)
@@ -212,6 +270,53 @@ Authorization: Bearer <token>
   
 - **Retrait de label** (`LABEL_REMOVED`)
   - Tous les membres du board sauf l'auteur reçoivent une notification
+
+## Routes Card Members
+
+### GET /cards/:id/members
+
+Récupère les membres d'une carte.
+
+**Authentification:** Requise (JWT)
+
+**Réponse (200 OK):**
+```json
+[
+  {
+    "id": "user123",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "avatar": null
+  }
+]
+```
+
+---
+
+### POST /cards/:id/members
+
+Assigne un membre à une carte. Déclenche une notification `ASSIGNED`.
+
+**Authentification:** Requise (JWT)
+
+**Body:**
+```json
+{
+  "userId": "user123"
+}
+```
+
+**Réponse (200 OK):** La carte mise à jour avec ses membres.
+
+---
+
+### DELETE /cards/:id/members/:userId
+
+Retire un membre d'une carte. Déclenche une notification `MEMBER_REMOVED`.
+
+**Authentification:** Requise (JWT)
+
+**Réponse (200 OK):** La carte mise à jour avec ses membres.
 
 ## Intégration Frontend
 

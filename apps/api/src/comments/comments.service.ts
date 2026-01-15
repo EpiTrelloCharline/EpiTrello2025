@@ -74,10 +74,26 @@ export class CommentsService {
             },
         });
 
-        // Notify board members
+        // Extract mentions from comment content
+        const mentionedUserIds = this.notificationsService.extractMentions(dto.content);
+        
+        // Notify mentioned users
+        if (mentionedUserIds.length > 0) {
+            await this.notificationsService.notifyMentions(
+                mentionedUserIds,
+                userId,
+                cardId,
+                card.title,
+                card.list.boardId,
+                dto.content,
+            );
+        }
+
+        // Notify board members (excluding author and mentioned users to avoid duplicates)
+        const excludeUserIds = [userId, ...mentionedUserIds];
         await this.notificationsService.notifyBoardMembers(
             card.list.boardId,
-            [userId],
+            excludeUserIds,
             NotificationType.COMMENT_ADDED,
             `Nouveau commentaire sur la carte "${card.title}"`,
             card.id,
