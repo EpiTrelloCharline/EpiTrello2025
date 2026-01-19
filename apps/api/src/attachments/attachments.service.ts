@@ -4,7 +4,10 @@ import {
     ForbiddenException,
     InternalServerErrorException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ActivityType } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { ActivityEvent, ActivityEvents } from '../activities/activities.events';
 import { IStorageService } from './storage.interface';
 import { Inject } from '@nestjs/common';
 
@@ -12,6 +15,7 @@ import { Inject } from '@nestjs/common';
 export class AttachmentsService {
     constructor(
         private readonly prisma: PrismaService,
+        private readonly eventEmitter: EventEmitter2,
         @Inject(IStorageService) private readonly storageService: IStorageService,
     ) { }
 
@@ -40,6 +44,7 @@ export class AttachmentsService {
                 uploadedById: userId,
             },
             include: {
+                card: { include: { list: true } },
                 uploadedBy: {
                     select: {
                         id: true,
@@ -50,6 +55,18 @@ export class AttachmentsService {
                 },
             },
         });
+
+        // Log Activity
+        this.eventEmitter.emit(
+            ActivityEvents.ATTACHMENT_ADDED,
+            new ActivityEvent(
+                attachment.card.list.boardId,
+                userId,
+                ActivityType.ATTACHMENT_ADD,
+                attachment.id,
+                `Fichier "${attachment.name}" ajouté à la carte "${attachment.card.title}"`
+            )
+        );
 
         return attachment;
     }
@@ -106,6 +123,18 @@ export class AttachmentsService {
         await this.prisma.attachment.delete({
             where: { id: attachmentId },
         });
+
+        // Log Activity
+        this.eventEmitter.emit(
+            ActivityEvents.ATTACHMENT_DELETED,
+            new ActivityEvent(
+                attachment.card.list.boardId,
+                userId,
+                ActivityType.ATTACHMENT_DELETE,
+                attachment.cardId,
+                `Fichier "${attachment.name}" supprimé de la carte "${attachment.card.title}"`
+            )
+        );
 
         return { message: 'Pièce jointe supprimée avec succès' };
     }

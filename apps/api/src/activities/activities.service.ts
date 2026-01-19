@@ -70,9 +70,66 @@ export class ActivitiesService {
                         id: true,
                         name: true,
                         email: true,
+                        avatar: true,
                     },
                 },
             },
         });
+    }
+
+    async getCardActivityHistory(cardId: string, limit: number = 50, offset: number = 0) {
+        // Fetch activities
+        const activities = await this.prisma.activity.findMany({
+            where: { entityId: cardId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        avatar: true,
+                    },
+                },
+            },
+        });
+
+        // Fetch comments
+        const comments = await this.prisma.comment.findMany({
+            where: { cardId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        avatar: true,
+                    },
+                },
+            },
+        });
+
+        // Combine and format
+        const mixedHistory = [
+            ...activities.map((a) => ({
+                id: a.id,
+                type: 'ACTIVITY' as const,
+                activityType: a.type,
+                details: a.details,
+                user: a.user,
+                createdAt: a.createdAt,
+            })),
+            ...comments.map((c) => ({
+                id: c.id,
+                type: 'COMMENT' as const,
+                content: c.content,
+                user: c.user,
+                createdAt: c.createdAt,
+            })),
+        ];
+
+        // Sort by createdAt descending
+        return mixedHistory
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            .slice(offset, offset + limit);
     }
 }

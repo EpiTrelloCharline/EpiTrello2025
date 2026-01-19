@@ -3,12 +3,14 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PrismaService } from "../prisma.service";
 import { CreateCardDto } from "./dto/create-card.dto";
 import { MoveCardDto } from "./dto/move-card.dto";
 import { UpdateCardDto } from "./dto/update-card.dto";
 import { BatchMoveCardsDto } from "./dto/batch-move-cards.dto";
 import { ActivitiesService } from "../activities/activities.service";
+import { ActivityEvent, ActivityEvents } from "../activities/activities.events";
 import { ActivityType, NotificationType } from "@prisma/client";
 import { NotificationsService } from "../notifications/notifications.service";
 import { WebSocketsGateway } from "../websockets/websockets.gateway";
@@ -20,6 +22,7 @@ export class CardsService {
     private activitiesService: ActivitiesService,
     private notificationsService: NotificationsService,
     private webSocketsGateway: WebSocketsGateway,
+    private eventEmitter: EventEmitter2,
   ) { }
 
   private async assertBoardMember(userId: string, listId: string) {
@@ -108,12 +111,15 @@ export class CardsService {
       },
     });
 
-    await this.activitiesService.logActivity(
-      list.boardId,
-      userId,
-      ActivityType.CREATE_CARD,
-      card.id,
-      `Carte "${card.title}" créée dans la liste "${list.title}"`
+    this.eventEmitter.emit(
+      ActivityEvents.CARD_CREATED,
+      new ActivityEvent(
+        list.boardId,
+        userId,
+        ActivityType.CREATE_CARD,
+        card.id,
+        `Carte "${card.title}" créée dans la liste "${list.title}"`
+      )
     );
 
     // Notify board members
@@ -190,12 +196,15 @@ export class CardsService {
     });
 
     if (isMovingToList) {
-      await this.activitiesService.logActivity(
-        sourceList.boardId,
-        userId,
-        ActivityType.MOVE_CARD,
-        updatedCard.id,
-        `Carte "${updatedCard.title}" déplacée de "${sourceList.title}" vers "${targetList.title}"`
+      this.eventEmitter.emit(
+        ActivityEvents.CARD_MOVED,
+        new ActivityEvent(
+          sourceList.boardId,
+          userId,
+          ActivityType.MOVE_CARD,
+          updatedCard.id,
+          `Carte "${updatedCard.title}" déplacée de "${sourceList.title}" vers "${targetList.title}"`
+        )
       );
 
       // Notify board members
@@ -250,12 +259,15 @@ export class CardsService {
     });
 
     if (dto.description !== undefined && dto.description !== card.description) {
-      await this.activitiesService.logActivity(
-        card.list.boardId,
-        userId,
-        ActivityType.UPDATE_DESCRIPTION,
-        card.id,
-        `Description modifiée pour la carte "${card.title}"`
+      this.eventEmitter.emit(
+        ActivityEvents.UPDATE_DESCRIPTION,
+        new ActivityEvent(
+          card.list.boardId,
+          userId,
+          ActivityType.UPDATE_DESCRIPTION,
+          card.id,
+          `Description modifiée pour la carte "${card.title}"`
+        )
       );
 
       // Notify board members
@@ -298,12 +310,15 @@ export class CardsService {
       },
     });
 
-    await this.activitiesService.logActivity(
-      card.list.boardId,
-      userId,
-      ActivityType.DELETE_CARD,
-      card.id,
-      `Carte "${card.title}" archivée`
+    this.eventEmitter.emit(
+      ActivityEvents.CARD_ARCHIVED,
+      new ActivityEvent(
+        card.list.boardId,
+        userId,
+        ActivityType.CARD_ARCHIVE,
+        card.id,
+        `Carte "${card.title}" archivée`
+      )
     );
 
     // Notify board members
@@ -508,7 +523,7 @@ export class CardsService {
     }
 
     // Perform batch update in a transaction
-    const updates = dto.cards.map(cardUpdate => 
+    const updates = dto.cards.map(cardUpdate =>
       this.prisma.card.update({
         where: { id: cardUpdate.cardId },
         data: {
