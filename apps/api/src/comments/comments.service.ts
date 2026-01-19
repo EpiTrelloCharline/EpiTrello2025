@@ -1,10 +1,12 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationType } from '@prisma/client';
+import { ActivityType, NotificationType } from '@prisma/client';
 import { WebSocketsGateway } from '../websockets/websockets.gateway';
+import { ActivityEvent, ActivityEvents } from '../activities/activities.events';
 
 @Injectable()
 export class CommentsService {
@@ -12,6 +14,7 @@ export class CommentsService {
         private prisma: PrismaService,
         private notificationsService: NotificationsService,
         private webSocketsGateway: WebSocketsGateway,
+        private eventEmitter: EventEmitter2,
     ) { }
 
     async findAll(userId: string, cardId: string) {
@@ -76,7 +79,7 @@ export class CommentsService {
 
         // Extract mentions from comment content
         const mentionedUserIds = this.notificationsService.extractMentions(dto.content);
-        
+
         // Notify mentioned users
         if (mentionedUserIds.length > 0) {
             await this.notificationsService.notifyMentions(
@@ -91,12 +94,16 @@ export class CommentsService {
 
         // Notify board members (excluding author and mentioned users to avoid duplicates)
         const excludeUserIds = [userId, ...mentionedUserIds];
-        await this.notificationsService.notifyBoardMembers(
-            card.list.boardId,
-            excludeUserIds,
-            NotificationType.COMMENT_ADDED,
-            `Nouveau commentaire sur la carte "${card.title}"`,
-            card.id,
+        // Log Activity
+        this.eventEmitter.emit(
+            ActivityEvents.COMMENT_ADDED,
+            new ActivityEvent(
+                card.list.boardId,
+                userId,
+                ActivityType.COMMENT_ADD,
+                card.id,
+                `Nouveau commentaire sur la carte "${card.title}"`
+            )
         );
 
         // Emit WebSocket event - comment_add
