@@ -1,0 +1,106 @@
+# ===========================================
+# Stage 1: Dependencies (Base)
+# ===========================================
+FROM node:20-alpine AS base
+
+# Install pnpm and OpenSSL for Prisma
+RUN corepack enable && corepack prepare pnpm@9.1.0 --activate
+RUN apk add --no-cache openssl
+
+# Set working directory
+WORKDIR /app
+
+# ===========================================
+# Stage 2: Dependencies & Build
+# ===========================================
+FROM base AS builder
+
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/validation/package.json ./packages/validation/
+
+# Install all dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY packages/validation ./packages/validation
+COPY apps/api ./apps/api
+
+# Build validation package first
+WORKDIR /app/packages/validation
+RUN pnpm build || true
+
+# Generate Prisma client
+WORKDIR /app/apps/api
+RUN pnpm exec prisma generate
+
+# Build the API
+RUN pnpm build
+
+# ===========================================
+# Stage 3: Production
+# ===========================================
+FROM node:20-alpine AS production
+
+# Add labels for better maintainability
+LABEL maintainer="EpiTrello Team"
+LABEL version="1.0.0"
+LABEL description="EpiTrello API Production Image"
+
+# Install OpenSSL for Prisma runtime
+RUN apk add --no-cache openssl
+
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nestjs
+
+WORKDIR /app
+
+# Copy all node_modules (root + workspace packages - pnpm hoists to .pnpm)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder /app/packages/validation/node_modules ./packages/validation/node_modules
+
+# Copy built files
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/packages/validation/dist ./packages/validation/dist
+
+# Copy package files (needed for module resolution)
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=builder /app/apps/api/package.json ./apps/api/package.json
+COPY --from=builder /app/packages/validation/package.json ./packages/validation/package.json
+
+# Copy Prisma schema for potential runtime needs
+COPY apps/api/prisma ./apps/api/prisma
+
+# Copy entrypoint script
+COPY apps/api/docker-entrypoint.sh ./apps/api/docker-entrypoint.sh
+RUN chmod +x ./apps/api/docker-entrypoint.sh
+
+# Create uploads directory
+RUN mkdir -p /app/apps/api/uploads && chown -R nestjs:nodejs /app/apps/api/uploads
+
+# Set ownership
+RUN chown -R nestjs:nodejs /app
+
+# Switch to non-root user
+USER nestjs
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
+
+# Expose the API port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+
+# Start the application with entrypoint script
+WORKDIR /app/apps/api
+ENTRYPOINT ["./docker-entrypoint.sh"]

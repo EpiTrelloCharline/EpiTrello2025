@@ -12,6 +12,7 @@ import { AttachmentsModule } from './attachments/attachments.module';
 import { ChecklistsModule } from './checklists/checklists.module';
 import { SearchModule } from './search/search.module';
 import { WebSocketsModule } from './websockets/websockets.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { WebSocketsModule } from './websockets/websockets.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    HealthModule, // Health check endpoints for production
     WebSocketsModule, // Global WebSocket module - must be imported before other modules
     AuthModule,
     WorkspacesModule,
