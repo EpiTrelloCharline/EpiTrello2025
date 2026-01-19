@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CommentsService } from './comments.service';
 import { PrismaService } from '../prisma.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
+import { WebSocketsGateway } from '../websockets/websockets.gateway';
 
 describe('CommentsService', () => {
     let service: CommentsService;
@@ -18,6 +20,14 @@ describe('CommentsService', () => {
             delete: jest.fn(),
         },
     };
+    const mockNotificationsService = {
+        extractMentions: jest.fn().mockReturnValue([]),
+        notifyMentions: jest.fn(),
+        notifyBoardMembers: jest.fn(),
+    };
+    const mockWebSocketsGateway = {
+        emitCommentAdd: jest.fn(),
+    };
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -27,6 +37,8 @@ describe('CommentsService', () => {
                     provide: PrismaService,
                     useValue: mockPrismaService,
                 },
+                { provide: NotificationsService, useValue: mockNotificationsService },
+                { provide: WebSocketsGateway, useValue: mockWebSocketsGateway },
             ],
         }).compile();
 
@@ -55,10 +67,18 @@ describe('CommentsService', () => {
             };
 
             mockPrismaService.card.findUnique.mockResolvedValue(mockCard);
-            mockPrismaService.comment.create.mockResolvedValue({ id: 'comment1', ...dto });
+            mockPrismaService.comment.create.mockResolvedValue({
+                id: 'comment1',
+                ...dto,
+                user: { id: userId, name: 'Test User', avatar: null }
+            });
 
             const result = await service.create(userId, cardId, dto);
-            expect(result).toEqual({ id: 'comment1', ...dto });
+            expect(result).toEqual({
+                id: 'comment1',
+                ...dto,
+                user: { id: userId, name: 'Test User', avatar: null }
+            });
         });
 
         it('should throw ForbiddenException if user is not a board member', async () => {

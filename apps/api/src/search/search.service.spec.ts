@@ -14,6 +14,9 @@ describe('SearchService', () => {
         comment: {
             findMany: jest.fn(),
         },
+        board: {
+            findMany: jest.fn(),
+        },
     };
 
     beforeEach(async () => {
@@ -38,7 +41,7 @@ describe('SearchService', () => {
     describe('search', () => {
         it('should return empty results if query is empty', async () => {
             const result = await service.search('user-1', { q: '' });
-            expect(result).toEqual({ cards: [], comments: [] });
+            expect(result).toEqual({ cards: [], comments: [], boards: [] });
         });
 
         it('should call prisma.card.findMany with correct global filters', async () => {

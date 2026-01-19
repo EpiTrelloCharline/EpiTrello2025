@@ -4,6 +4,8 @@ import { PrismaService } from '../prisma.service';
 import { ActivitiesService } from '../activities/activities.service';
 import { ForbiddenException } from '@nestjs/common';
 import { ActivityType } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
+import { WebSocketsGateway } from '../websockets/websockets.gateway';
 
 describe('CardsService', () => {
     let service: CardsService;
@@ -27,6 +29,18 @@ describe('CardsService', () => {
     const mockActivitiesService = {
         logActivity: jest.fn(),
     };
+    const mockNotificationsService = {
+        notifyBoardMembers: jest.fn(),
+        notifyAssignment: jest.fn(),
+        createNotification: jest.fn(),
+    };
+    const mockWebSocketsGateway = {
+        emitCardCreated: jest.fn(),
+        emitCardMove: jest.fn(),
+        emitCardUpdated: jest.fn(),
+        emitCardDeleted: jest.fn(),
+        emitBoardUpdated: jest.fn(),
+    };
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -34,6 +48,8 @@ describe('CardsService', () => {
                 CardsService,
                 { provide: PrismaService, useValue: mockPrismaService },
                 { provide: ActivitiesService, useValue: mockActivitiesService },
+                { provide: NotificationsService, useValue: mockNotificationsService },
+                { provide: WebSocketsGateway, useValue: mockWebSocketsGateway },
             ],
         }).compile();
 

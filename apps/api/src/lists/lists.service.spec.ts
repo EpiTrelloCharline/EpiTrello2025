@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ListsService } from './lists.service';
 import { PrismaService } from '../prisma.service';
 import { ForbiddenException } from '@nestjs/common';
+import { WebSocketsGateway } from '../websockets/websockets.gateway';
 
 describe('ListsService', () => {
     let service: ListsService;
@@ -17,12 +18,19 @@ describe('ListsService', () => {
             update: jest.fn(),
         },
     };
+    const mockWebSocketsGateway = {
+        emitListCreated: jest.fn(),
+        emitListUpdated: jest.fn(),
+        emitListDeleted: jest.fn(),
+        emitBoardUpdated: jest.fn(),
+    };
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ListsService,
                 { provide: PrismaService, useValue: mockPrismaService },
+                { provide: WebSocketsGateway, useValue: mockWebSocketsGateway },
             ],
         }).compile();
 

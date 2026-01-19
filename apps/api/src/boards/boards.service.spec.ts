@@ -6,6 +6,7 @@ import {
     NotFoundException,
     BadRequestException,
 } from '@nestjs/common';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('BoardsService', () => {
     let service: BoardsService;
@@ -31,12 +32,17 @@ describe('BoardsService', () => {
             findUnique: jest.fn(),
         },
     };
+    const mockNotificationsService = {
+        createNotification: jest.fn(),
+        notifyBoardMembers: jest.fn(),
+    };
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 BoardsService,
                 { provide: PrismaService, useValue: mockPrismaService },
+                { provide: NotificationsService, useValue: mockNotificationsService },
             ],
         }).compile();
 
