@@ -12,11 +12,12 @@ type SearchModalProps = {
 type SearchResult = {
     cards: any[];
     comments: any[];
+    boards: any[];
 };
 
 export function SearchModal({ boardId, onClose, onCardClick }: SearchModalProps) {
     const [query, setQuery] = useState('');
-    const [results, setResults] = useState<SearchResult>({ cards: [], comments: [] });
+    const [results, setResults] = useState<SearchResult>({ cards: [], comments: [], boards: [] });
     const [isSearching, setIsSearching] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -34,7 +35,7 @@ export function SearchModal({ boardId, onClose, onCardClick }: SearchModalProps)
     useEffect(() => {
         const timer = setTimeout(async () => {
             if (!query.trim()) {
-                setResults({ cards: [], comments: [] });
+                setResults({ cards: [], comments: [], boards: [] });
                 return;
             }
 
@@ -91,10 +92,38 @@ export function SearchModal({ boardId, onClose, onCardClick }: SearchModalProps)
                 <div className="overflow-y-auto p-4 space-y-6">
                     {isSearching ? (
                         <div className="text-center text-gray-500 py-8">Recherche en cours...</div>
-                    ) : query.trim() && results.cards.length === 0 && results.comments.length === 0 ? (
+                    ) : query.trim() && results.cards.length === 0 && results.comments.length === 0 && results.boards.length === 0 ? (
                         <div className="text-center text-gray-500 py-8">Aucun résultat trouvé pour &quot;{query}&quot;</div>
                     ) : (
                         <>
+                            {results.boards.length > 0 && (
+                                <div>
+                                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Tableaux</h3>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        {results.boards.map((board: any) => (
+                                            <a
+                                                key={board.id}
+                                                href={`/boards/${board.id}`}
+                                                className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded-lg cursor-pointer border border-transparent hover:border-blue-200 transition-colors"
+                                            >
+                                                <div
+                                                    className="w-8 h-8 rounded flex-shrink-0"
+                                                    style={{
+                                                        backgroundColor: board.backgroundColor || '#0079bf',
+                                                        backgroundImage: board.backgroundImage ? `url(${board.backgroundImage})` : 'none',
+                                                        backgroundSize: 'cover'
+                                                    }}
+                                                />
+                                                <div className="min-w-0">
+                                                    <div className="font-medium text-gray-800 text-sm truncate">
+                                                        {highlightText(board.title, query)}
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             {results.cards.length > 0 && (
                                 <div>
                                     <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Cartes</h3>

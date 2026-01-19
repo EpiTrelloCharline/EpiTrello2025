@@ -16,7 +16,7 @@ export class SearchService {
         const { q: query, boardId, workspaceId } = queryDto;
 
         if (!query || query.trim().length === 0) {
-            return { cards: [], comments: [] };
+            return { cards: [], comments: [], boards: [] };
         }
 
         const searchTerm = query.trim();
@@ -118,9 +118,37 @@ export class SearchService {
             }
         });
 
+        // 3. Search Boards (only if not filtering by boardId already)
+        let boards: any[] = [];
+        if (!boardId) {
+            boards = await this.prisma.board.findMany({
+                where: {
+                    title: { contains: searchTerm, mode: 'insensitive' as const },
+                    isArchived: false,
+                    ...boardAccessFilter
+                },
+                select: {
+                    id: true,
+                    title: true,
+                    backgroundColor: true,
+                    backgroundImage: true,
+                    workspace: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    }
+                },
+                orderBy: {
+                    updatedAt: 'desc'
+                }
+            });
+        }
+
         return {
             cards,
             comments,
+            boards,
         };
     }
 }

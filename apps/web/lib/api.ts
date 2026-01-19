@@ -170,6 +170,13 @@ export async function searchBoard(boardId: string, query: string) {
   return res.json();
 }
 
+export async function globalSearch(query: string) {
+  const queryDto: SearchQueryDto = { q: query };
+  const params = new URLSearchParams(queryDto as any);
+  const res = await api(`/search?${params.toString()}`);
+  return res.json();
+}
+
 // Archive/Restore/Delete Permanent
 export async function getArchivedLists(boardId: string) {
   const res = await api(`/lists?boardId=${boardId}&archived=true`);
