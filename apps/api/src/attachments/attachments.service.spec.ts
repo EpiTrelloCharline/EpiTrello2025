@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AttachmentsService } from './attachments.service';
 import { PrismaService } from '../prisma.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { IStorageService } from './storage.interface';
 
 describe('AttachmentsService', () => {
     let service: AttachmentsService;
@@ -19,6 +20,11 @@ describe('AttachmentsService', () => {
         },
     };
 
+    const mockStorageService = {
+        uploadFile: jest.fn(),
+        deleteFile: jest.fn(),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -26,6 +32,10 @@ describe('AttachmentsService', () => {
                 {
                     provide: PrismaService,
                     useValue: mockPrismaService,
+                },
+                {
+                    provide: IStorageService,
+                    useValue: mockStorageService,
                 },
             ],
         }).compile();

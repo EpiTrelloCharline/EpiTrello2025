@@ -5,12 +5,15 @@ import {
     InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { unlink } from 'fs/promises';
-import { join } from 'path';
+import { IStorageService } from './storage.interface';
+import { Inject } from '@nestjs/common';
 
 @Injectable()
 export class AttachmentsService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        @Inject(IStorageService) private readonly storageService: IStorageService,
+    ) { }
 
     /**
      * Upload an attachment to a card
@@ -23,11 +26,14 @@ export class AttachmentsService {
         // Verify card exists and user has write access
         await this.validateCardAccess(userId, cardId);
 
+        // Upload file to storage (S3 or move local file)
+        const storageUrl = await this.storageService.uploadFile(file);
+
         // Create attachment record in database
         const attachment = await this.prisma.attachment.create({
             data: {
                 name: file.originalname,
-                url: file.path,
+                url: storageUrl,
                 mimeType: file.mimetype,
                 size: file.size,
                 cardId,
@@ -93,13 +99,8 @@ export class AttachmentsService {
             );
         }
 
-        // Delete file from disk
-        try {
-            await unlink(attachment.url);
-        } catch (error) {
-            console.error('Erreur lors de la suppression du fichier:', error);
-            // Continue with database deletion even if file deletion fails
-        }
+        // Delete file from storage
+        await this.storageService.deleteFile(attachment.url);
 
         // Delete from database
         await this.prisma.attachment.delete({
@@ -170,5 +171,65 @@ export class AttachmentsService {
         }
 
         return card;
+    }
+
+    /**
+     * Rename an attachment
+     */
+    async renameAttachment(userId: string, attachmentId: string, newName: string) {
+        // Find the attachment
+        const attachment = await this.prisma.attachment.findUnique({
+            where: { id: attachmentId },
+            include: {
+                card: {
+                    include: {
+                        list: {
+                            include: {
+                                board: {
+                                    include: {
+                                        members: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!attachment) {
+            throw new NotFoundException('Pièce jointe introuvable');
+        }
+
+        // Check if user has write access to the board
+        const hasWriteAccess = attachment.card.list.board.members.some(
+            (member) =>
+                member.userId === userId &&
+                (member.role === 'OWNER' ||
+                    member.role === 'ADMIN' ||
+                    member.role === 'MEMBER'),
+        );
+
+        if (!hasWriteAccess) {
+            throw new ForbiddenException(
+                "Vous n'avez pas la permission de renommer cette pièce jointe",
+            );
+        }
+
+        // Update name in database
+        return this.prisma.attachment.update({
+            where: { id: attachmentId },
+            data: { name: newName },
+            include: {
+                uploadedBy: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        avatar: true,
+                    },
+                },
+            },
+        });
     }
 }
