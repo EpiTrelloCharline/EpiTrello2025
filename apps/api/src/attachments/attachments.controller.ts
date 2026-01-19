@@ -9,7 +9,10 @@ import {
     UseInterceptors,
     UploadedFile,
     BadRequestException,
+    Patch,
+    Body,
 } from '@nestjs/common';
+import { RenameAttachmentDto } from './dto/rename-attachment.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AttachmentsService } from './attachments.service';
@@ -51,8 +54,29 @@ export class AttachmentsController {
      * GET /cards/:id/attachments
      * Get all attachments for a card
      */
+    /**
+     * GET /cards/:id/attachments
+     * Get all attachments for a card
+     */
     @Get('cards/:id/attachments')
     async getCardAttachments(@Param('id') cardId: string) {
         return this.attachmentsService.getCardAttachments(cardId);
+    }
+
+    /**
+     * PATCH /attachments/:id
+     * Rename an attachment
+     */
+    @Patch('attachments/:id')
+    async renameAttachment(
+        @Param('id') attachmentId: string,
+        @Body() renameDto: RenameAttachmentDto,
+        @Request() req: any,
+    ) {
+        return this.attachmentsService.renameAttachment(
+            req.user.id,
+            attachmentId,
+            renameDto.name,
+        );
     }
 }

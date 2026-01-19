@@ -25,8 +25,8 @@ const ALLOWED_MIME_TYPES = [
     'text/csv',
 ];
 
-// Maximum file size: 10MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+// Maximum file size: 20MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 export const multerConfig: MulterOptions = {
     storage: diskStorage({
