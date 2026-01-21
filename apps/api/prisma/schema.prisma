@@ -12,12 +12,15 @@ datasource db {
 
 // User model (base model for relations)
 model User {
-  id            String            @id @default(cuid())
-  email         String            @unique
-  name          String?
-  avatar        String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  id               String            @id @default(cuid())
+  email            String            @unique
+  name             String?
+  avatar           String?
+  password         String?
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
   workspaces    WorkspaceMember[]
   createdWorkspaces Workspace[]

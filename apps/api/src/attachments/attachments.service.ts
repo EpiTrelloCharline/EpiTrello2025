@@ -8,7 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ActivityType } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { ActivityEvent, ActivityEvents } from '../activities/activities.events';
-import { IStorageService } from './storage.interface';
+import { IStorageService } from './storage/storage.interface';
 import { Inject } from '@nestjs/common';
 
 @Injectable()
