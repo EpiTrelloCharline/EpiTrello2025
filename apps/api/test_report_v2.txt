@@ -1,0 +1,13 @@
+FAIL test/attachments.e2e-spec.ts
+  ● Test suite failed to run
+
+    [96msrc/app.module.ts[0m:[93m5[0m:[93m36[0m - [91merror[0m[90m TS2307: [0mCannot find module '@nestjs/event-emitter' or its corresponding type declarations.
+
+    [7m5[0m import { EventEmitterModule } from '@nestjs/event-emitter';
+    [7m [0m [91m                                   ~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        15.769 s
+Ran all test suites matching /test\\attachments.e2e-spec.ts/i.

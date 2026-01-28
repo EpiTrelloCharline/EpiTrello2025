@@ -36,4 +36,16 @@ export class UpdateCardDto {
     @IsOptional()
     @IsString()
     size?: string;
+
+    @IsOptional()
+    @IsString()
+    coverColor?: string;
+
+    @IsOptional()
+    @IsString()
+    coverUrl?: string;
+
+    @IsOptional()
+    @IsString()
+    coverSize?: string;
 }

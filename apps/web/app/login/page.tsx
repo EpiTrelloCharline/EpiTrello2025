@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 
 export default function LoginPage() {
@@ -106,6 +107,17 @@ export default function LoginPage() {
               required
             />
           </div>
+
+          {isLogin && (
+            <div className="text-right">
+              <Link 
+                href="/forgot-password" 
+                className="text-sm text-blue-500 hover:text-blue-600"
+              >
+                Mot de passe oublié ?
+              </Link>
+            </div>
+          )}
 
           <button
             type="submit"

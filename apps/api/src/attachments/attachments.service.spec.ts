@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AttachmentsService } from './attachments.service';
 import { PrismaService } from '../prisma.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
-import { IStorageService } from './storage.interface';
+import { IStorageService } from './storage/storage.interface';
 
 describe('AttachmentsService', () => {
     let service: AttachmentsService;

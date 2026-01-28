@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AttachmentsController } from './attachments.controller';
 import { AttachmentsService } from './attachments.service';
 import { PrismaService } from '../prisma.service';
-import { IStorageService } from './storage.interface';
+import { IStorageService } from './storage/storage.interface';
 import { LocalStorageService } from './storage/local-storage.service';
 import { S3StorageService } from './storage/s3-storage.service';
 

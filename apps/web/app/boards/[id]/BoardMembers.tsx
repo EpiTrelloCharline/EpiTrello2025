@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 
 type Member = {
@@ -187,13 +188,12 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
       </button>
 
       {/* Modal full members list */}
-      {showMembersList && (
-        <>
+      {showMembersList && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[200] flex justify-center items-start pt-32 overflow-y-auto bg-black/50" onClick={() => setShowMembersList(false)}>
           <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setShowMembersList(false)}
-          />
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl p-6 min-w-[400px] max-w-[500px] max-h-[600px] overflow-y-auto z-50">
+            className="bg-white rounded-lg shadow-2xl p-6 min-w-[400px] max-w-[500px] my-8 relative"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">
                 Membres du board ({members.length})
@@ -239,22 +239,21 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
               </div>
             )}
           </div>
-        </>
+        </div>,
+        document.body
       )}
 
-      {/* Modal d'invitation */}
-      {isInviting && (
-        <>
+      {isInviting && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[200] flex justify-center items-start pt-32 overflow-y-auto bg-black/50" onClick={() => {
+          setIsInviting(false);
+          setError('');
+          setEmail('');
+          setSuccess('');
+        }}>
           <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => {
-              setIsInviting(false);
-              setError('');
-              setEmail('');
-              setSuccess('');
-            }}
-          />
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl p-6 min-w-[400px] z-50">
+            className="bg-white rounded-lg shadow-2xl p-6 min-w-[400px] my-8 relative"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">Inviter un membre</h2>
               <button
@@ -349,7 +348,8 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
               </div>
             </div>
           </div>
-        </>
+        </div>,
+        document.body
       )}
     </div>
   );

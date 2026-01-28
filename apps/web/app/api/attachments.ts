@@ -16,7 +16,7 @@ export type Attachment = {
  * Get all attachments for a card
  */
 export async function getCardAttachments(cardId: string): Promise<Attachment[]> {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     const response = await fetch(`${API_URL}/cards/${cardId}/attachments`, {
         method: 'GET',
         headers: {
@@ -36,7 +36,7 @@ export async function getCardAttachments(cardId: string): Promise<Attachment[]> 
  * Upload a new attachment to a card
  */
 export async function uploadAttachment(cardId: string, file: File): Promise<Attachment> {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     const formData = new FormData();
     formData.append('file', file);
 
@@ -59,7 +59,7 @@ export async function uploadAttachment(cardId: string, file: File): Promise<Atta
  * Delete an attachment
  */
 export async function deleteAttachment(attachmentId: string): Promise<void> {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     const response = await fetch(`${API_URL}/attachments/${attachmentId}`, {
         method: 'DELETE',
         headers: {
@@ -84,7 +84,7 @@ export async function updateCardCover(
         coverColor?: string | null;
     }
 ): Promise<any> {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('accessToken');
     const response = await fetch(`${API_URL}/cards/${cardId}/cover`, {
         method: 'PATCH',
         headers: {

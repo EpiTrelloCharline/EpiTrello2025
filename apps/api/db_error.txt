@@ -1,0 +1,10 @@
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "trello", schema "public" at "127.0.0.1:5432"
+
+10 migrations found in prisma/migrations
+Following migration have not yet been applied:
+20260115015845_add_notification_types
+
+To apply migrations in development run prisma migrate dev.
+To apply migrations in production run prisma migrate deploy.
