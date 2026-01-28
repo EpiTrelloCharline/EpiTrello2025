@@ -65,6 +65,12 @@ export class CardsController {
     }
 
     @UseGuards(BoardWriteGuard)
+    @Patch(':id/cover')
+    updateCover(@Param('id') id: string, @Body() updateCardDto: UpdateCardDto, @Request() req: any) {
+        return this.cardsService.update(req.user.id, id, updateCardDto);
+    }
+
+    @UseGuards(BoardWriteGuard)
     @Delete(':id')
     archive(@Param('id') id: string, @Request() req: any) {
         return this.cardsService.archive(req.user.id, id);

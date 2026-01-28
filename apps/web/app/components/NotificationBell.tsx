@@ -115,7 +115,7 @@ export function NotificationBell({ boardId }: NotificationBellProps) {
       {/* Bell Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="relative p-2 text-inherit hover:bg-white/10 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
         aria-label="Notifications"
         title="Notifications"
       >
@@ -212,9 +212,8 @@ export function NotificationBell({ boardId }: NotificationBellProps) {
                 {notifications.map((notification) => (
                   <li
                     key={notification.id}
-                    className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
-                      !notification.isRead ? 'bg-blue-50' : ''
-                    }`}
+                    className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${!notification.isRead ? 'bg-blue-50' : ''
+                      }`}
                     onClick={() => !notification.isRead && handleMarkAsRead(notification.id)}
                   >
                     <div className="flex items-start gap-3">

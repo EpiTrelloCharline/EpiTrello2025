@@ -247,6 +247,9 @@ export class CardsService {
         listId: dto.listId,
         position: dto.position ? Number(dto.position) : undefined,
         isArchived: dto.isArchived,
+        coverColor: dto.coverColor,
+        coverUrl: dto.coverUrl,
+        coverSize: dto.coverSize,
       },
       include: {
         labels: {

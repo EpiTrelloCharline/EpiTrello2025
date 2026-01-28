@@ -1,0 +1,67 @@
+FAIL test/attachments.e2e-spec.ts (16.616 s)
+  Attachments (e2e)
+    × /cards/:id/attachments (POST) - should upload a file (34 ms)
+    × /cards/:id/attachments (GET) - should get attachments (8 ms)
+    × /uploads/... (GET) - should serve the uploaded file (Static Serve) (7 ms)
+    × /attachments/:id (DELETE) - should delete the attachment (8 ms)
+
+  ● Attachments (e2e) › /cards/:id/attachments (POST) - should upload a file
+
+    read ECONNRESET
+
+
+
+  ● Attachments (e2e) › /cards/:id/attachments (GET) - should get attachments
+
+    expected 200 "OK", got 401 "Unauthorized"
+
+    [0m [90m 123 |[39m             [33m.[39m[36mget[39m([32m`/cards/${cardId}/attachments`[39m)
+     [90m 124 |[39m             [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m [32m`Bearer ${jwtToken}`[39m)
+    [31m[1m>[22m[39m[90m 125 |[39m             [33m.[39mexpect([35m200[39m)
+     [90m     |[39m              [31m[1m^[22m[39m
+     [90m 126 |[39m             [33m.[39mexpect((res) [33m=>[39m {
+     [90m 127 |[39m                 expect([33mArray[39m[33m.[39misArray(res[33m.[39mbody))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 128 |[39m                 expect(res[33m.[39mbody[33m.[39mlength)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (attachments.e2e-spec.ts:125:14)
+      ----
+      at Test._assertStatus (../../../node_modules/.pnpm/supertest@7.1.4/node_modules/supertest/lib/test.js:309:14)
+      at ../../../node_modules/.pnpm/supertest@7.1.4/node_modules/supertest/lib/test.js:365:13
+      at Test._assertFunction (../../../node_modules/.pnpm/supertest@7.1.4/node_modules/supertest/lib/test.js:342:13)
+      at Test.assert (../../../node_modules/.pnpm/supertest@7.1.4/node_modules/supertest/lib/test.js:195:23)
+      at localAssert (../../../node_modules/.pnpm/supertest@7.1.4/node_modules/supertest/lib/test.js:138:14)
+      at Server.<anonymous> (../../../node_modules/.pnpm/supertest@7.1.4/node_modules/supertest/lib/test.js:152:11)
+
+  ● Attachments (e2e) › /uploads/... (GET) - should serve the uploaded file (Static Serve)
+
+    TypeError: Cannot read properties of undefined (reading 'url')
+
+    [0m [90m 152 |[39m
+     [90m 153 |[39m         [90m// Let's inspect what URL we got.[39m
+    [31m[1m>[22m[39m[90m 154 |[39m         [36mconst[39m dbUrl [33m=[39m attachment[33m.[39murl[33m;[39m
+     [90m     |[39m                                  [31m[1m^[22m[39m
+     [90m 155 |[39m         [90m// On Windows file.path might have backslashes.[39m
+     [90m 156 |[39m         [36mconst[39m normalizedUrl [33m=[39m dbUrl[33m.[39mreplace([35m/\\/g[39m[33m,[39m [32m'/'[39m)[33m;[39m
+     [90m 157 |[39m         [36mconst[39m filename [33m=[39m normalizedUrl[33m.[39msplit([32m'/'[39m)[33m.[39mpop()[33m;[39m[0m
+
+      at Object.<anonymous> (attachments.e2e-spec.ts:154:34)
+
+  ● Attachments (e2e) › /attachments/:id (DELETE) - should delete the attachment
+
+    TypeError: Cannot read properties of undefined (reading 'id')
+
+    [0m [90m 167 |[39m             [33m.[39m[36mget[39m([32m`/cards/${cardId}/attachments`[39m)
+     [90m 168 |[39m             [33m.[39m[36mset[39m([32m'Authorization'[39m[33m,[39m [32m`Bearer ${jwtToken}`[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 169 |[39m         [36mconst[39m attachmentId [33m=[39m listRes[33m.[39mbody[[35m0[39m][33m.[39mid[33m;[39m
+     [90m     |[39m                                              [31m[1m^[22m[39m
+     [90m 170 |[39m
+     [90m 171 |[39m         [36mreturn[39m request(app[33m.[39mgetHttpServer())
+     [90m 172 |[39m             [33m.[39m[36mdelete[39m([32m`/attachments/${attachmentId}`[39m)[0m
+
+      at Object.<anonymous> (attachments.e2e-spec.ts:169:46)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 4 total
+Snapshots:   0 total
+Time:        17.32 s, estimated 25 s
+Ran all test suites matching /test\\attachments.e2e-spec.ts/i.

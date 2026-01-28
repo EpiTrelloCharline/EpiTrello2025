@@ -17,8 +17,8 @@ model User {
   name             String?
   avatar           String?
   password         String?
-  resetToken       String?
-  resetTokenExpiry DateTime?
+  resetCode        String?
+  resetCodeExpires DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -124,6 +124,9 @@ model Card {
   isDone      Boolean  @default(false)
   priority    String?
   size        String?
+  coverColor  String?
+  coverUrl    String?
+  coverSize   String?  @default("normal")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

@@ -17,7 +17,7 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email);
+    return this.authService.login(dto.email, dto.password);
   }
 
   @Post('forgot-password')
@@ -27,12 +27,7 @@ export class AuthController {
 
   @Post('reset-password')
   async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.authService.resetPassword(dto.token, dto.password);
-  }
-
-  @Get('validate-reset-token')
-  async validateResetToken(@Query('token') token: string) {
-    return this.authService.validateResetToken(token);
+    return this.authService.resetPassword(dto.email, dto.code, dto.password);
   }
 
   @UseGuards(JwtAuthGuard)

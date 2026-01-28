@@ -1,34 +1,50 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
-import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma.service';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) { }
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) { }
 
   async register(email: string, password: string, name?: string) {
-    // Vérifier si l'utilisateur existe déjà
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {
       throw new UnauthorizedException('User already exists');
     }
 
-    // Créer l'utilisateur (pour l'instant, on ignore le password - à améliorer plus tard)
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     const user = await this.prisma.user.create({
       data: {
         email,
         name: name || email.split('@')[0],
+        password: hashedPassword,
       },
     });
 
     return this.generateToken(user.id, user.email);
   }
 
-  async login(email: string) {
-    // Pour l'instant, on ignore le password - à améliorer plus tard
+  async login(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Verify password with bcrypt
+    if (!user.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -36,7 +52,7 @@ export class AuthService {
   }
 
   private generateToken(userId: string, email: string) {
-    const secret = process.env.JWT_ACCESS_SECRET || 'default-secret-change-in-production';
+    const secret = process.env.JWT_SECRET || 'default-secret-change-in-production';
     const token = jwt.sign(
       {
         sub: userId,
@@ -65,62 +81,67 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
-    
-    // Pour des raisons de sécurité, on retourne toujours un succès même si l'email n'existe pas
+
+    // Return success even if user not found to prevent enumeration
     if (!user) {
-      return { message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' };
+      return { message: 'Si cet email existe, un code de réinitialisation a été envoyé.' };
     }
 
-    // Générer un token de reset
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 heure
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Sauvegarder le token dans la base de données
+    // Hash the code
+    const saltRounds = 10;
+    const hashCode = await bcrypt.hash(code, saltRounds);
+
+    // Set expiry to 15 minutes
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        resetToken,
-        resetTokenExpiry,
+        resetCode: hashCode,
+        resetCodeExpires: expires,
       },
     });
 
-    // En production, on enverrait un email avec le lien
-    // Pour le développement, on retourne le token directement
-    const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
-    
-    console.log(`[DEV] Reset password link for ${email}: ${resetUrl}`);
+    // Send email with unhashed code
+    try {
+      await this.mailService.sendPasswordResetEmail(email, code);
+      this.logger.log(`Password reset email sent to ${email}`);
+    } catch (e) {
+      this.logger.error('Failed to send email:', e);
+      // Don't throw in dev to allow testing, but log the error
+    }
 
-    return { 
-      message: 'Si cet email existe, un lien de réinitialisation a été envoyé.',
-      // En dev seulement - à retirer en production
-      resetToken,
-      resetUrl,
-    };
+    return { message: 'Si cet email existe, un code de réinitialisation a été envoyé.' };
   }
 
-  async resetPassword(token: string, newPassword: string) {
-    // Trouver l'utilisateur avec ce token
-    const user = await this.prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpiry: {
-          gt: new Date(),
-        },
-      },
-    });
+  async resetPassword(email: string, code: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
 
-    if (!user) {
-      throw new BadRequestException('Token invalide ou expiré');
+    if (!user || !user.resetCode || !user.resetCodeExpires) {
+      throw new BadRequestException('Code invalide ou expiré');
     }
 
-    // Mettre à jour le mot de passe et supprimer le token
-    // Note: En production, il faudrait hasher le mot de passe avec bcrypt
+    if (new Date() > user.resetCodeExpires) {
+      throw new BadRequestException('Code expiré');
+    }
+
+    const isMatch = await bcrypt.compare(code, user.resetCode);
+    if (!isMatch) {
+      throw new BadRequestException('Code invalide');
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        password: newPassword, // TODO: Hasher avec bcrypt en production
-        resetToken: null,
-        resetTokenExpiry: null,
+        password: hashedPassword,
+        resetCode: null,
+        resetCodeExpires: null, // Clear expiry too
       },
     });
 
@@ -128,20 +149,10 @@ export class AuthService {
   }
 
   async validateResetToken(token: string) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpiry: {
-          gt: new Date(),
-        },
-      },
-    });
-
-    if (!user) {
-      throw new BadRequestException('Token invalide ou expiré');
-    }
-
-    return { valid: true, email: user.email };
+    // Deprecated/Unused in new flow but keeping method signature just in case
+    // Or refactoring to validate code? logic is specific to code+email now.
+    // Since this was likely for the link-based approach, I'll remove the body or throw error
+    throw new BadRequestException('Use reset-password with code instead');
   }
 }
 

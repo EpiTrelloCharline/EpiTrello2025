@@ -1,53 +1,20 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 
-function ResetPasswordForm() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get('token');
 
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [validating, setValidating] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [tokenValid, setTokenValid] = useState(false);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-
-  // Validate token on mount
-  useEffect(() => {
-    const validateToken = async () => {
-      if (!token) {
-        setError('Token manquant');
-        setValidating(false);
-        return;
-      }
-
-      try {
-        const response = await api(`/auth/validate-reset-token?token=${token}`);
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Token invalide');
-        }
-
-        const data = await response.json();
-        setTokenValid(true);
-        setUserEmail(data.email);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Token invalide ou expiré');
-      } finally {
-        setValidating(false);
-      }
-    };
-
-    validateToken();
-  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,12 +31,17 @@ function ResetPasswordForm() {
       return;
     }
 
+    if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+      setError('Le code doit contenir exactement 6 chiffres');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await api('/auth/reset-password', {
         method: 'POST',
-        body: JSON.stringify({ token, password }),
+        body: JSON.stringify({ email, code, password }),
       });
 
       if (!response.ok) {
@@ -78,7 +50,7 @@ function ResetPasswordForm() {
       }
 
       setSuccess(true);
-      
+
       // Redirect to login after a short delay
       setTimeout(() => {
         router.push('/login');
@@ -94,48 +66,6 @@ function ResetPasswordForm() {
     }
   };
 
-  // Display loading while validating token
-  if (validating) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Validation du lien...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Invalid token
-  if (!tokenValid && !success) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
-          <h1 className="text-2xl font-bold mb-4 text-center text-red-600">
-            Lien invalide
-          </h1>
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error || 'Ce lien de réinitialisation est invalide ou a expiré.'}
-          </div>
-          <div className="text-center space-y-2">
-            <Link 
-              href="/forgot-password" 
-              className="block text-blue-500 hover:text-blue-600"
-            >
-              Demander un nouveau lien
-            </Link>
-            <Link 
-              href="/login" 
-              className="block text-gray-500 hover:text-gray-600 text-sm"
-            >
-              Retour à la connexion
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Success
   if (success) {
     return (
@@ -148,8 +78,8 @@ function ResetPasswordForm() {
             Votre mot de passe a été modifié avec succès. Vous allez être redirigé vers la page de connexion...
           </div>
           <div className="text-center">
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="text-blue-500 hover:text-blue-600"
             >
               Aller à la connexion
@@ -160,18 +90,16 @@ function ResetPasswordForm() {
     );
   }
 
-  // Reinitialize password form
+  // Reset password form
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
         <h1 className="text-2xl font-bold mb-2 text-center">
-          Nouveau mot de passe
+          Réinitialiser le mot de passe
         </h1>
-        {userEmail && (
-          <p className="text-gray-600 text-center mb-6">
-            Pour le compte : <strong>{userEmail}</strong>
-          </p>
-        )}
+        <p className="text-gray-600 text-center mb-6">
+          Entrez le code reçu par email et votre nouveau mot de passe.
+        </p>
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -180,6 +108,35 @@ function ResetPasswordForm() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input
+              type="email"
+              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="email@example.com"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Code de vérification</label>
+            <input
+              type="text"
+              name="code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              className="w-full px-3 py-2 border rounded text-center text-2xl tracking-widest font-mono"
+              placeholder="000000"
+              maxLength={6}
+              pattern="\d{6}"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">Code à 6 chiffres reçu par email</p>
+          </div>
+
           <div>
             <label className="block text-sm font-medium mb-1">Nouveau mot de passe</label>
             <input
@@ -218,8 +175,8 @@ function ResetPasswordForm() {
           </button>
 
           <div className="text-center">
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
               className="text-blue-500 hover:text-blue-600 text-sm"
             >
               Retour à la connexion
@@ -228,20 +185,5 @@ function ResetPasswordForm() {
         </form>
       </div>
     </div>
-  );
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    }>
-      <ResetPasswordForm />
-    </Suspense>
   );
 }
