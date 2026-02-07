@@ -19,6 +19,8 @@ model User {
   password         String?
   resetCode        String?
   resetCodeExpires DateTime?
+  googleId         String?           @unique
+  provider         String?           @default("local")
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
