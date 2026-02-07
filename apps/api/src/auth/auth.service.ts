@@ -154,5 +154,44 @@ export class AuthService {
     // Since this was likely for the link-based approach, I'll remove the body or throw error
     throw new BadRequestException('Use reset-password with code instead');
   }
+
+  async googleLogin(googleUser: any) {
+    // Check if user exists with this Google ID
+    let user = await this.prisma.user.findUnique({
+      where: { googleId: googleUser.googleId }
+    });
+
+    // If not found, check by email
+    if (!user) {
+      user = await this.prisma.user.findUnique({
+        where: { email: googleUser.email }
+      });
+
+      // If user with email exists but no Google ID, link the account
+      if (user) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: googleUser.googleId,
+            provider: 'google',
+            avatar: googleUser.avatar || user.avatar,
+          }
+        });
+      } else {
+        // Create new user
+        user = await this.prisma.user.create({
+          data: {
+            email: googleUser.email,
+            name: googleUser.name,
+            googleId: googleUser.googleId,
+            avatar: googleUser.avatar,
+            provider: 'google',
+          }
+        });
+      }
+    }
+
+    return this.generateToken(user.id, user.email);
+  }
 }
 
