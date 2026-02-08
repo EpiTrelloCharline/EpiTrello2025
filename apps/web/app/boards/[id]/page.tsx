@@ -40,6 +40,7 @@ type Card = {
   id: string;
   listId: string;
   title: string;
+  description?: string;
   position: string;
   labels?: Label[];
   members?: User[]; // Card members are User objects from the API
@@ -84,6 +85,7 @@ export default function BoardPage() {
   // Activity Sidebar State
   const [isActivitySidebarOpen, setIsActivitySidebarOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isBoardMembersOpen, setIsBoardMembersOpen] = useState(false);
 
   const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0 || dateFilter !== 'none';
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -649,6 +651,43 @@ export default function BoardPage() {
     }
   }
 
+  async function handleDuplicateCard(cardId: string) {
+    const cardLoc = findCardLocation(cardId, cardsByList);
+    if (!cardLoc) return;
+
+    const card = cardsByList[cardLoc.listId][cardLoc.index];
+
+    try {
+      const created = await createCard(cardLoc.listId, `${card.title} (Copie)`);
+
+      // Update with full data if needed (description, etc.)
+      const updateData: any = {};
+      if (card.description) updateData.description = card.description;
+      if (card.coverColor) updateData.coverColor = card.coverColor;
+      if (card.coverUrl) updateData.coverUrl = card.coverUrl;
+      if (card.coverSize) updateData.coverSize = card.coverSize;
+      if (card.priority) updateData.priority = card.priority;
+      if (card.size) updateData.size = card.size;
+
+      if (Object.keys(updateData).length > 0) {
+        await updateCard(created.id, updateData);
+      }
+
+      // Refresh list to get updated card with all data
+      const result = await getCardsByList(cardLoc.listId);
+      if (Array.isArray(result)) {
+        const transformedCards = result.map(c => ({
+          ...c,
+          labels: c.labels?.map((cl: any) => cl.label) || []
+        }));
+        setCardsByList(prev => ({ ...prev, [cardLoc.listId]: transformedCards }));
+      }
+    } catch (e) {
+      console.error('Failed to duplicate card:', e);
+      alert('Échec de la duplication de la carte');
+    }
+  }
+
   // Calculate text color based on background
   const textColor = board?.backgroundColor ? getTextColor(board.backgroundColor) : '#ffffff';
   const backgroundStyle = board?.backgroundColor
@@ -661,6 +700,15 @@ export default function BoardPage() {
     <div className="h-screen flex flex-col" style={backgroundStyle}>
       {/* Board Header */}
       <div className="relative z-50 h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 gap-4" style={{ color: textColor }}>
+        <a
+          href={board?.workspaceId ? `/workspaces/${board.workspaceId}/boards` : '/workspaces'}
+          className="p-1.5 hover:bg-white/20 rounded transition-colors mr-1"
+          title="Retour aux tableaux"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </a>
         <div className="font-bold text-lg">Epi Trello</div>
 
         {/* Board Title */}
@@ -676,6 +724,8 @@ export default function BoardPage() {
             board={board}
             members={board.members}
             onMemberAdded={fetchBoardData}
+            showMembersList={isBoardMembersOpen}
+            setShowMembersList={setIsBoardMembersOpen}
           />
         )}
 
@@ -802,6 +852,7 @@ export default function BoardPage() {
                     onCardClick={setSelectedCard}
                     onUpdateList={handleUpdateList}
                     onDeleteList={handleDeleteList}
+                    onDuplicateCard={handleDuplicateCard}
                     isDragDisabled={isFiltering}
                     boardId={params.id}
                     isCardDragging={activeType === 'card'}
@@ -869,18 +920,20 @@ export default function BoardPage() {
           onClose={() => setSelectedCard(null)}
           onSave={handleSaveCardDetails}
           onLabelsUpdated={() => {
-            // Refetch cards to get updated labels
-            const listId = selectedCard.listId;
-            getCardsByList(listId).then(result => {
-              if (Array.isArray(result)) {
-                const transformedCards = result.map(card => ({
-                  ...card,
-                  labels: card.labels?.map((cl: any) => cl.label) || []
-                }));
-                setCardsByList(prev => ({ ...prev, [listId]: transformedCards }));
-              }
-            });
+            if (selectedCard) {
+              const listId = selectedCard.listId;
+              getCardsByList(listId).then(result => {
+                if (Array.isArray(result)) {
+                  const transformedCards = result.map(card => ({
+                    ...card,
+                    labels: card.labels?.map((cl: any) => cl.label) || []
+                  }));
+                  setCardsByList(prev => ({ ...prev, [listId]: transformedCards }));
+                }
+              });
+            }
           }}
+          onShowBoardMembers={() => setIsBoardMembersOpen(true)}
         />
       )}
 
@@ -915,7 +968,7 @@ export default function BoardPage() {
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, onUpdateList, onDeleteList, isDragDisabled, boardId, isCardDragging, activeCardId }: {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, onUpdateList, onDeleteList, onDuplicateCard, isDragDisabled, boardId, isCardDragging, activeCardId }: {
   id: string;
   title: string;
   cards: Card[];
@@ -925,6 +978,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   onCardClick: (card: Card) => void;
   onUpdateList: (listId: string, newTitle: string) => void;
   onDeleteList: (listId: string) => void;
+  onDuplicateCard?: (cardId: string) => void;
   isDragDisabled: boolean;
   boardId: string;
   isCardDragging?: boolean;
@@ -1130,6 +1184,7 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
               onClick={() => onCardClick(card)}
               isDragDisabled={isDragDisabled}
               isDragOverlay={activeCardId === card.id}
+              onDuplicate={onDuplicateCard}
               onLabelsUpdated={() => {
                 // Refetch cards to get updated labels
                 getCardsByList(id).then(result => {

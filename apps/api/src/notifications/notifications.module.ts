@@ -9,8 +9,7 @@ import { WebSocketsModule } from '../websockets/websockets.module';
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
-    PrismaService,
   ],
   exports: [NotificationsService],
 })
-export class NotificationsModule {}
+export class NotificationsModule { }

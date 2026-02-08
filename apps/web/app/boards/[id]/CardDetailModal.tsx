@@ -38,9 +38,10 @@ type CardDetailModalProps = {
     onClose: () => void;
     onSave: (data: { title: string; description: string }) => Promise<void> | void;
     onLabelsUpdated?: () => void;
+    onShowBoardMembers?: () => void;
 };
 
-export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdated }: CardDetailModalProps) {
+export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdated, onShowBoardMembers }: CardDetailModalProps) {
     const [title, setTitle] = useState(card.title);
     const [description, setDescription] = useState(card.description || '');
     const [dueDate, setDueDate] = useState(card.dueDate || '');
@@ -377,7 +378,11 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                         <div className="w-40">
                             <h3 className="text-xs font-semibold text-gray-600 mb-2">AJOUTER À LA CARTE</h3>
                             <div className="space-y-2">
-                                <SidebarButton icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />} label="Membres" />
+                                <SidebarButton
+                                    icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />}
+                                    label="Membres"
+                                    onClick={onShowBoardMembers}
+                                />
                                 <SidebarButton
                                     ref={labelButtonRef}
                                     icon={

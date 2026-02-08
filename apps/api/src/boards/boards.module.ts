@@ -16,7 +16,6 @@ import { NotificationsModule } from "../notifications/notifications.module";
   controllers: [BoardsController],
   providers: [
     BoardsService,
-    PrismaService,
     BoardPermissionsService,
     BoardReadGuard,
     BoardWriteGuard,

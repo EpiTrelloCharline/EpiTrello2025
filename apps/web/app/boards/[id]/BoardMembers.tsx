@@ -24,10 +24,22 @@ interface BoardMembersProps {
   board: Board | null;
   members: Member[];
   onMemberAdded: () => void;
+  showMembersList?: boolean;
+  setShowMembersList?: (show: boolean) => void;
 }
 
-export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProps) {
-  const [showMembersList, setShowMembersList] = useState(false);
+export function BoardMembers({ board, members, onMemberAdded, showMembersList: externalShowMembersList, setShowMembersList: externalSetShowMembersList }: BoardMembersProps) {
+  const [internalShowMembersList, setInternalShowMembersList] = useState(false);
+
+  const showMembersList = externalShowMembersList !== undefined ? externalShowMembersList : internalShowMembersList;
+  const setShowMembersList = (show: boolean) => {
+    if (externalSetShowMembersList) {
+      externalSetShowMembersList(show);
+    } else {
+      setInternalShowMembersList(show);
+    }
+  };
+
   const [isInviting, setIsInviting] = useState(false);
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -58,6 +70,7 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
 
   const getRoleLabel = (role: string) => {
     const roleMap: Record<string, string> = {
+      'OWNER': 'Propriétaire',
       'ADMIN': 'Administrateur',
       'MEMBER': 'Membre',
       'VIEWER': 'Observateur'
@@ -140,7 +153,7 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
     <div className="flex items-center gap-3">
       {/* Members avatars */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium opacity-90">Membres:</span>
+        <span className="text-sm font-medium opacity-90">Membres du tableau:</span>
         <div className="flex -space-x-2 overflow-hidden">
           {members.slice(0, 5).map((member) => (
             <div
@@ -196,7 +209,7 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">
-                Membres du board ({members.length})
+                Membres du tableau ({members.length})
               </h2>
               <button
                 onClick={() => setShowMembersList(false)}

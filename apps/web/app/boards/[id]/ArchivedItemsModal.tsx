@@ -79,7 +79,7 @@ export default function ArchivedItemsModal({ boardId, isOpen, onClose }: Archive
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-32 p-4">
             {/* Overlay */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"

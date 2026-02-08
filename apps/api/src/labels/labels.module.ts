@@ -9,7 +9,7 @@ import { NotificationsModule } from "../notifications/notifications.module";
 @Module({
   imports: [ActivitiesModule, NotificationsModule],
   controllers: [LabelsController],
-  providers: [LabelsService, PrismaService],
+  providers: [LabelsService],
   exports: [LabelsService],
 })
 export class LabelsModule { }

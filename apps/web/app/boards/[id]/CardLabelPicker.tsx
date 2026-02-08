@@ -73,10 +73,24 @@ export function CardLabelPicker({
     useEffect(() => {
         if (anchorEl) {
             const rect = anchorEl.getBoundingClientRect();
-            setPosition({
-                top: rect.top - 200,
-                left: rect.left
-            });
+            // Position to the right of the button
+            let left = rect.right + 10;
+            // If it would go off-screen to the right, put it on the left
+            if (left + 320 > window.innerWidth) {
+                left = rect.left - 330;
+            }
+
+            // Raise it significantly to avoid being cut off at bottom
+            let top = rect.top - 150;
+            const popupHeight = 600; // Actual max-h
+
+            // Boundary checks
+            if (top + popupHeight > window.innerHeight) {
+                top = window.innerHeight - popupHeight - 10;
+            }
+            if (top < 10) top = 10;
+
+            setPosition({ top, left });
         }
     }, [anchorEl]);
 

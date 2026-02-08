@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma.service';
 
 @Module({
     controllers: [ChecklistsController],
-    providers: [ChecklistsService, PrismaService],
+    providers: [ChecklistsService],
     exports: [ChecklistsService],
 })
 export class ChecklistsModule { }

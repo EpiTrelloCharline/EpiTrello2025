@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Attachment, getCardAttachments, uploadAttachment, updateCardCover } from '@/app/api/attachments';
 
 type CoverPopupProps = {
@@ -115,13 +116,23 @@ export function CoverPopup({
         }
     };
 
-    if (!anchorEl) return null;
+    if (!anchorEl || typeof document === 'undefined') return null;
 
     const rect = anchorEl.getBoundingClientRect();
-    const top = rect.top - 200;
-    const left = rect.left - 320; // Décalage vers la gauche (largeur de la popup)
+    let left = rect.right + 10;
+    // Switch to left side if no space on right (width is 320px)
+    if (left + 320 > window.innerWidth) {
+        left = rect.left - 330;
+    }
 
-    return (
+    let top = rect.top - 150;
+    const estimatedHeight = 600;
+    if (top + estimatedHeight > window.innerHeight) {
+        top = window.innerHeight - estimatedHeight - 10;
+    }
+    if (top < 10) top = 10;
+
+    return createPortal(
         <>
             {/* Overlay */}
             <div
@@ -243,6 +254,7 @@ export function CoverPopup({
                     </button>
                 )}
             </div>
-        </>
+        </>,
+        document.body
     );
 }

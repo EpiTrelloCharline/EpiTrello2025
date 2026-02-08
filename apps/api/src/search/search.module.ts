@@ -6,6 +6,6 @@ import { PrismaService } from '../prisma.service';
 
 @Module({
     controllers: [SearchController],
-    providers: [SearchService, PrismaService],
+    providers: [SearchService],
 })
 export class SearchModule { }

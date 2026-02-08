@@ -11,6 +11,6 @@ import { NotificationsModule } from "../notifications/notifications.module";
 @Module({
   imports: [BoardsModule, LabelsModule, ActivitiesModule, NotificationsModule],
   controllers: [CardsController],
-  providers: [CardsService, PrismaService],
+  providers: [CardsService],
 })
 export class CardsModule { }

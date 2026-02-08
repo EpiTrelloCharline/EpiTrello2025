@@ -8,7 +8,7 @@ import { MailModule } from '../mail/mail.module';
 @Module({
   imports: [MailModule],
   controllers: [AuthController],
-  providers: [AuthService, PrismaService],
+  providers: [AuthService],
 })
 export class AuthModule { }
 

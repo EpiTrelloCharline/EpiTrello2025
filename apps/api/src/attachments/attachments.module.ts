@@ -12,7 +12,6 @@ import { S3StorageService } from './storage/s3-storage.service';
     controllers: [AttachmentsController],
     providers: [
         AttachmentsService,
-        PrismaService,
         {
             provide: IStorageService,
             useFactory: (configService: ConfigService) => {

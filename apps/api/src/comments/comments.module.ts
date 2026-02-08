@@ -8,6 +8,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
     imports: [NotificationsModule],
     controllers: [CommentsController],
-    providers: [CommentsService, PrismaService],
+    providers: [CommentsService],
 })
 export class CommentsModule { }

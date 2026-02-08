@@ -21,6 +21,7 @@ model User {
   resetCodeExpires DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+  isPremium        Boolean           @default(false)
 
   workspaces    WorkspaceMember[]
   createdWorkspaces Workspace[]

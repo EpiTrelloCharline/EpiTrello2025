@@ -8,7 +8,7 @@ import { BoardsModule } from '../boards/boards.module';
 @Module({
   imports: [BoardsModule], // Needed for BoardReadGuard and BoardWriteGuard
   controllers: [ListsController],
-  providers: [ListsService, PrismaService],
+  providers: [ListsService],
 })
 export class ListsModule { }
 
