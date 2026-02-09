@@ -115,7 +115,7 @@ export default function WorkspaceSettingsPage() {
             setLoading(false);
             console.log('--- fetchWorkspace finished ---');
         }
-    }, [params?.id, router]);
+    }, [params?.id]);
 
     useEffect(() => {
         fetchWorkspace();

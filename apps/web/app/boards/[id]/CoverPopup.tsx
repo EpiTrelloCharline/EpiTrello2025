@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Attachment, getCardAttachments, uploadAttachment, updateCardCover } from '@/app/api/attachments';
 
@@ -42,11 +42,7 @@ export function CoverPopup({
     const [selectedSize, setSelectedSize] = useState(currentCoverSize);
     const [uploading, setUploading] = useState(false);
 
-    useEffect(() => {
-        loadAttachments();
-    }, [cardId]);
-
-    const loadAttachments = async () => {
+    const loadAttachments = useCallback(async () => {
         try {
             const data = await getCardAttachments(cardId);
             // Only show images
@@ -54,7 +50,11 @@ export function CoverPopup({
         } catch (error) {
             console.error('Error loading attachments:', error);
         }
-    };
+    }, [cardId]);
+
+    useEffect(() => {
+        loadAttachments();
+    }, [loadAttachments]);
 
     const handleSizeChange = async (size: string) => {
         setSelectedSize(size);

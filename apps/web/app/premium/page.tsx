@@ -60,7 +60,7 @@ export default function PremiumPage() {
                         Devenez Premium
                     </h2>
                     <p className="mt-2 text-sm text-gray-600">
-                        Débloquez tout le potentiel d'EpiTrello
+                        Débloquez tout le potentiel d&apos;EpiTrello
                     </p>
                 </div>
 

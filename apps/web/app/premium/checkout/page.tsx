@@ -111,7 +111,7 @@ function CheckoutContent() {
                     </form>
 
                     <p className="mt-4 text-xs text-indigo-600 text-center font-semibold">
-                        Mode Simulation : Cliquez sur "Payer" pour activer immédiatement vos avantages Premium.
+                        Mode Simulation : Cliquez sur &quot;Payer&quot; pour activer immédiatement vos avantages Premium.
                     </p>
                 </div>
 

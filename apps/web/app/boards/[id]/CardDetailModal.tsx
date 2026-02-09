@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { CardLabelPicker } from './CardLabelPicker';
 import { AttachmentUploadZone } from './AttachmentUploadZone';
@@ -62,21 +62,26 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
     const [showChecklistPopover, setShowChecklistPopover] = useState(false);
     const checklistButtonRef = useRef<HTMLButtonElement>(null);
 
-    const fetchChecklists = async () => {
+    const fetchChecklists = useCallback(async () => {
         try {
             const data = await getChecklists(card.id);
             setChecklists(data);
         } catch (error) {
             console.error('Failed to fetch checklists:', error);
         }
-    };
+    }, [card.id]);
 
     useEffect(() => {
         fetchChecklists();
-    }, [card.id]);
+    }, [fetchChecklists]);
 
     // Get current user info
     const currentUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+
+    const handleClose = useCallback(() => {
+        setIsVisible(false);
+        setTimeout(onClose, 200); // Wait for transition
+    }, [onClose]);
 
     useEffect(() => {
         setIsVisible(true);
@@ -85,12 +90,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, []);
-
-    const handleClose = () => {
-        setIsVisible(false);
-        setTimeout(onClose, 200); // Wait for transition
-    };
+    }, [handleClose]);
 
     // Notify other users that we're editing this card
     useEffect(() => {

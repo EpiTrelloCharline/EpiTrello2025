@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Attachment, getCardAttachments, deleteAttachment, updateCardCover, uploadAttachment } from '../../api/attachments';
 import { AttachmentItem } from './AttachmentItem';
 
@@ -19,11 +19,7 @@ export function AttachmentsSection({ cardId, currentCoverId, refreshTrigger, onC
     const [loading, setLoading] = useState(true);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadAttachments();
-    }, [cardId, refreshTrigger]);
-
-    const loadAttachments = async () => {
+    const loadAttachments = useCallback(async () => {
         try {
             const data = await getCardAttachments(cardId);
             setAttachments(data);
@@ -33,7 +29,11 @@ export function AttachmentsSection({ cardId, currentCoverId, refreshTrigger, onC
         } finally {
             setLoading(false);
         }
-    };
+    }, [cardId, onAttachmentsChange]);
+
+    useEffect(() => {
+        loadAttachments();
+    }, [loadAttachments, refreshTrigger]);
 
     const handleDelete = async (attachmentId: string) => {
         console.log('handleDelete called with attachmentId:', attachmentId);

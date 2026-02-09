@@ -210,7 +210,7 @@ export default function ForgotPasswordPage() {
                   onClick={() => setStep('email')}
                   className="text-gray-500 hover:text-gray-600 text-sm"
                 >
-                  ← Changer d'email
+                  ← Changer d&apos;email
                 </button>
               </div>
             </form>

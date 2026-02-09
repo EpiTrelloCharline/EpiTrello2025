@@ -10,11 +10,11 @@ export default function GoogleCallbackPage() {
 
   useEffect(() => {
     const token = searchParams.get('token');
-    
+
     if (token) {
       // Stock the token in localStorage
       localStorage.setItem('accessToken', token);
-      
+
       // Redirect to workspaces
       setTimeout(() => {
         router.push('/workspaces');
@@ -33,7 +33,7 @@ export default function GoogleCallbackPage() {
         <div className="bg-white rounded-lg shadow-md p-8 max-w-md">
           <div className="text-center">
             <div className="text-red-500 text-5xl mb-4">✗</div>
-            <h1 className="text-xl font-bold mb-2">Erreur d'authentification</h1>
+            <h1 className="text-xl font-bold mb-2">Erreur d&apos;authentification</h1>
             <p className="text-gray-600 mb-4">{error}</p>
             <p className="text-sm text-gray-500">Redirection vers la page de connexion...</p>
           </div>
