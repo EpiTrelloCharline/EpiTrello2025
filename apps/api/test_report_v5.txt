@@ -1,0 +1,109 @@
+FAIL test/attachments.e2e-spec.ts (27.569 s)
+  ● Attachments (e2e) › /cards/:id/attachments (POST) - should upload a file
+
+    PrismaClientInitializationError: Can't reach database server at `localhost:5432`
+
+    Please make sure your database server is running at `localhost:5432`.
+
+    [0m [90m  5 |[39m [36mexport[39m [36mclass[39m [33mPrismaService[39m [36mextends[39m [33mPrismaClient[39m [36mimplements[39m [33mOnModuleInit[39m {
+     [90m  6 |[39m   [36masync[39m onModuleInit() {
+    [31m[1m>[22m[39m[90m  7 |[39m     [36mawait[39m [36mthis[39m[33m.[39m$connect()[33m;[39m
+     [90m    |[39m     [31m[1m^[22m[39m
+     [90m  8 |[39m   }
+     [90m  9 |[39m
+     [90m 10 |[39m   [36masync[39m cleanDb() {[0m
+
+      at t (../../../node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/runtime/library.js:112:2488)
+      at Proxy.onModuleInit (../src/prisma.service.ts:7:5)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/nest-application-context.js:234:13)
+      at Proxy.init (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/nest-application.js:100:9)
+      at Object.<anonymous> (attachments.e2e-spec.ts:26:9)
+
+  ● Attachments (e2e) › /cards/:id/attachments (GET) - should get attachments
+
+    PrismaClientInitializationError: Can't reach database server at `localhost:5432`
+
+    Please make sure your database server is running at `localhost:5432`.
+
+    [0m [90m  5 |[39m [36mexport[39m [36mclass[39m [33mPrismaService[39m [36mextends[39m [33mPrismaClient[39m [36mimplements[39m [33mOnModuleInit[39m {
+     [90m  6 |[39m   [36masync[39m onModuleInit() {
+    [31m[1m>[22m[39m[90m  7 |[39m     [36mawait[39m [36mthis[39m[33m.[39m$connect()[33m;[39m
+     [90m    |[39m     [31m[1m^[22m[39m
+     [90m  8 |[39m   }
+     [90m  9 |[39m
+     [90m 10 |[39m   [36masync[39m cleanDb() {[0m
+
+      at t (../../../node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/runtime/library.js:112:2488)
+      at Proxy.onModuleInit (../src/prisma.service.ts:7:5)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/nest-application-context.js:234:13)
+      at Proxy.init (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/nest-application.js:100:9)
+      at Object.<anonymous> (attachments.e2e-spec.ts:26:9)
+
+  ● Attachments (e2e) › /uploads/... (GET) - should serve the uploaded file (Static Serve)
+
+    PrismaClientInitializationError: Can't reach database server at `localhost:5432`
+
+    Please make sure your database server is running at `localhost:5432`.
+
+    [0m [90m  5 |[39m [36mexport[39m [36mclass[39m [33mPrismaService[39m [36mextends[39m [33mPrismaClient[39m [36mimplements[39m [33mOnModuleInit[39m {
+     [90m  6 |[39m   [36masync[39m onModuleInit() {
+    [31m[1m>[22m[39m[90m  7 |[39m     [36mawait[39m [36mthis[39m[33m.[39m$connect()[33m;[39m
+     [90m    |[39m     [31m[1m^[22m[39m
+     [90m  8 |[39m   }
+     [90m  9 |[39m
+     [90m 10 |[39m   [36masync[39m cleanDb() {[0m
+
+      at t (../../../node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/runtime/library.js:112:2488)
+      at Proxy.onModuleInit (../src/prisma.service.ts:7:5)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/nest-application-context.js:234:13)
+      at Proxy.init (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/nest-application.js:100:9)
+      at Object.<anonymous> (attachments.e2e-spec.ts:26:9)
+
+  ● Attachments (e2e) › /attachments/:id (DELETE) - should delete the attachment
+
+    PrismaClientInitializationError: Can't reach database server at `localhost:5432`
+
+    Please make sure your database server is running at `localhost:5432`.
+
+    [0m [90m  5 |[39m [36mexport[39m [36mclass[39m [33mPrismaService[39m [36mextends[39m [33mPrismaClient[39m [36mimplements[39m [33mOnModuleInit[39m {
+     [90m  6 |[39m   [36masync[39m onModuleInit() {
+    [31m[1m>[22m[39m[90m  7 |[39m     [36mawait[39m [36mthis[39m[33m.[39m$connect()[33m;[39m
+     [90m    |[39m     [31m[1m^[22m[39m
+     [90m  8 |[39m   }
+     [90m  9 |[39m
+     [90m 10 |[39m   [36masync[39m cleanDb() {[0m
+
+      at t (../../../node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client/runtime/library.js:112:2488)
+      at Proxy.onModuleInit (../src/prisma.service.ts:7:5)
+          at async Promise.all (index 0)
+      at callModuleInitHook (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/hooks/on-module-init.hook.js:43:5)
+      at Proxy.callInitHook (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/nest-application-context.js:234:13)
+      at Proxy.init (../../../node_modules/.pnpm/@nestjs+core@10.4.20_@nestjs+common@10.4.20_class-transformer@0.5.1_class-validator@0.14.3_re_jmlphsbtgrl4xmp3sdt3qhph4m/node_modules/@nestjs/core/nest-application.js:100:9)
+      at Object.<anonymous> (attachments.e2e-spec.ts:26:9)
+
+
+  ● Test suite failed to run
+
+    TypeError: Cannot read properties of undefined (reading 'cleanDb')
+
+    [0m [90m  97 |[39m         }
+     [90m  98 |[39m
+    [31m[1m>[22m[39m[90m  99 |[39m         [36mawait[39m prisma[33m.[39mcleanDb()[33m;[39m
+     [90m     |[39m                      [31m[1m^[22m[39m
+     [90m 100 |[39m         [36mawait[39m app[33m.[39mclose()[33m;[39m
+     [90m 101 |[39m     })[33m;[39m
+     [90m 102 |[39m[0m
+
+      at Object.<anonymous> (attachments.e2e-spec.ts:99:22)
+
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 4 total
+Snapshots:   0 total
+Time:        28.353 s
+Ran all test suites matching /test\\attachments.e2e-spec.ts/i.

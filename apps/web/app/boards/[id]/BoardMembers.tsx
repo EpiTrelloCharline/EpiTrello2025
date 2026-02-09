@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '@/lib/api';
 
 type Member = {
@@ -23,10 +24,22 @@ interface BoardMembersProps {
   board: Board | null;
   members: Member[];
   onMemberAdded: () => void;
+  showMembersList?: boolean;
+  setShowMembersList?: (show: boolean) => void;
 }
 
-export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProps) {
-  const [showMembersList, setShowMembersList] = useState(false);
+export function BoardMembers({ board, members, onMemberAdded, showMembersList: externalShowMembersList, setShowMembersList: externalSetShowMembersList }: BoardMembersProps) {
+  const [internalShowMembersList, setInternalShowMembersList] = useState(false);
+
+  const showMembersList = externalShowMembersList !== undefined ? externalShowMembersList : internalShowMembersList;
+  const setShowMembersList = (show: boolean) => {
+    if (externalSetShowMembersList) {
+      externalSetShowMembersList(show);
+    } else {
+      setInternalShowMembersList(show);
+    }
+  };
+
   const [isInviting, setIsInviting] = useState(false);
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -57,6 +70,7 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
 
   const getRoleLabel = (role: string) => {
     const roleMap: Record<string, string> = {
+      'OWNER': 'Propriétaire',
       'ADMIN': 'Administrateur',
       'MEMBER': 'Membre',
       'VIEWER': 'Observateur'
@@ -130,11 +144,16 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
     }
   };
 
+  // Guard clause if members is undefined or empty
+  if (!members || members.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flex items-center gap-3">
       {/* Members avatars */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium opacity-90">Membres:</span>
+        <span className="text-sm font-medium opacity-90">Membres du tableau:</span>
         <div className="flex -space-x-2 overflow-hidden">
           {members.slice(0, 5).map((member) => (
             <div
@@ -182,16 +201,15 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
       </button>
 
       {/* Modal full members list */}
-      {showMembersList && (
-        <>
+      {showMembersList && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[200] flex justify-center items-start pt-32 overflow-y-auto bg-black/50" onClick={() => setShowMembersList(false)}>
           <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setShowMembersList(false)}
-          />
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl p-6 min-w-[400px] max-w-[500px] max-h-[600px] overflow-y-auto z-50">
+            className="bg-white rounded-lg shadow-2xl p-6 min-w-[400px] max-w-[500px] my-8 relative"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">
-                Membres du board ({members.length})
+                Membres du tableau ({members.length})
               </h2>
               <button
                 onClick={() => setShowMembersList(false)}
@@ -234,22 +252,21 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
               </div>
             )}
           </div>
-        </>
+        </div>,
+        document.body
       )}
 
-      {/* Modal d'invitation */}
-      {isInviting && (
-        <>
+      {isInviting && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[200] flex justify-center items-start pt-32 overflow-y-auto bg-black/50" onClick={() => {
+          setIsInviting(false);
+          setError('');
+          setEmail('');
+          setSuccess('');
+        }}>
           <div
-            className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => {
-              setIsInviting(false);
-              setError('');
-              setEmail('');
-              setSuccess('');
-            }}
-          />
-          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-2xl p-6 min-w-[400px] z-50">
+            className="bg-white rounded-lg shadow-2xl p-6 min-w-[400px] my-8 relative"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-800">Inviter un membre</h2>
               <button
@@ -344,7 +361,8 @@ export function BoardMembers({ board, members, onMemberAdded }: BoardMembersProp
               </div>
             </div>
           </div>
-        </>
+        </div>,
+        document.body
       )}
     </div>
   );

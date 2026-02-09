@@ -1,6 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { CardLabelPicker } from './CardLabelPicker';
+import { AttachmentUploadZone } from './AttachmentUploadZone';
+import { AttachmentsSection } from './AttachmentsSection';
+import { CoverPopup } from './CoverPopup';
+import { ActivitySection } from './ActivitySection';
+import { useWebSocket } from '@/app/context/WebSocketContext';
+import { getChecklists } from '@/lib/api';
+import { ChecklistSection } from './ChecklistSection';
+import { ChecklistPopover } from './ChecklistPopover';
 
 type Label = {
     id: string;
@@ -14,7 +22,14 @@ type Card = {
     title: string;
     description?: string;
     position: string;
+    coverId?: string | null;
+    coverColor?: string | null;
+    coverSize?: string;
     labels?: Label[];
+    dueDate?: string | null;
+    isDone?: boolean;
+    priority?: string | null;
+    size?: string | null;
 };
 
 type CardDetailModalProps = {
@@ -23,37 +38,128 @@ type CardDetailModalProps = {
     onClose: () => void;
     onSave: (data: { title: string; description: string }) => Promise<void> | void;
     onLabelsUpdated?: () => void;
+    onShowBoardMembers?: () => void;
 };
 
-export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdated }: CardDetailModalProps) {
+export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdated, onShowBoardMembers }: CardDetailModalProps) {
     const [title, setTitle] = useState(card.title);
     const [description, setDescription] = useState(card.description || '');
+    const [dueDate, setDueDate] = useState(card.dueDate || '');
+    const [isDone, setIsDone] = useState(card.isDone || false);
+    const [priority, setPriority] = useState(card.priority || '');
+    const [size, setSize] = useState(card.size || '');
     const [showLabelPicker, setShowLabelPicker] = useState(false);
+    const [showCoverPopup, setShowCoverPopup] = useState(false);
+    const [isVisible, setIsVisible] = useState(false);
+    const [attachmentRefresh, setAttachmentRefresh] = useState(0);
+    const [hasAttachments, setHasAttachments] = useState(false);
     const labelButtonRef = useRef<HTMLButtonElement>(null);
+    const coverButtonRef = useRef<HTMLButtonElement>(null);
+    const { socket, startEditingCard, endEditingCard } = useWebSocket();
+    const [isEditingConflict, setIsEditingConflict] = useState(false);
+    const [conflictEditor, setConflictEditor] = useState<{ userName: string } | null>(null);
+    const [checklists, setChecklists] = useState<any[]>([]);
+    const [showChecklistPopover, setShowChecklistPopover] = useState(false);
+    const checklistButtonRef = useRef<HTMLButtonElement>(null);
+
+    const fetchChecklists = useCallback(async () => {
+        try {
+            const data = await getChecklists(card.id);
+            setChecklists(data);
+        } catch (error) {
+            console.error('Failed to fetch checklists:', error);
+        }
+    }, [card.id]);
 
     useEffect(() => {
+        fetchChecklists();
+    }, [fetchChecklists]);
+
+    // Get current user info
+    const currentUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
+
+    const handleClose = useCallback(() => {
+        setIsVisible(false);
+        setTimeout(onClose, 200); // Wait for transition
+    }, [onClose]);
+
+    useEffect(() => {
+        setIsVisible(true);
         const onKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape') handleClose();
         };
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [onClose]);
+    }, [handleClose]);
+
+    // Notify other users that we're editing this card
+    useEffect(() => {
+        if (currentUser.id && currentUser.name) {
+            startEditingCard(boardId, card.id, currentUser.id, currentUser.name || currentUser.email)
+                .then(response => {
+                    if (response.conflict && response.editor) {
+                        setIsEditingConflict(true);
+                        setConflictEditor(response.editor);
+                    }
+                });
+        }
+
+        return () => {
+            if (currentUser.id) {
+                endEditingCard(boardId, card.id, currentUser.id);
+            }
+        };
+    }, [card.id, boardId, currentUser.id, currentUser.name, currentUser.email, startEditingCard, endEditingCard]);
+
+    // Listen for other users starting to edit
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleCardEditingStarted = (data: { cardId: string; userId: string; userName: string }) => {
+            if (data.cardId === card.id && data.userId !== currentUser.id) {
+                setIsEditingConflict(true);
+                setConflictEditor({ userName: data.userName });
+            }
+        };
+
+        const handleCardEditingEnded = (data: { cardId: string }) => {
+            if (data.cardId === card.id) {
+                setIsEditingConflict(false);
+                setConflictEditor(null);
+            }
+        };
+
+        socket.on('cardEditingStarted', handleCardEditingStarted);
+        socket.on('cardEditingEnded', handleCardEditingEnded);
+
+        return () => {
+            socket.off('cardEditingStarted', handleCardEditingStarted);
+            socket.off('cardEditingEnded', handleCardEditingEnded);
+        };
+    }, [socket, card.id, currentUser.id]);
 
     const handleSave = async () => {
-        await onSave({ title, description });
+        await onSave({ title, description, dueDate: dueDate || undefined, isDone, priority, size } as any);
     };
 
     if (typeof document === 'undefined') return null;
 
     return createPortal(
-        <div className="fixed inset-0 z-[200] flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-            <div className="relative bg-[#f4f5f7] rounded-lg w-full max-w-3xl mx-4 shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className={`fixed inset-0 z-[200] flex items-center justify-center transition-opacity duration-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-200"
+                onClick={handleClose}
+            />
+            <div
+                className={`relative bg-[#f4f5f7] rounded-lg w-full max-w-3xl mx-4 shadow-2xl flex flex-col max-h-[90vh] transform transition-all duration-200 ${isVisible ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}
+                onClick={e => e.stopPropagation()}
+            >
 
                 {/* Close button */}
                 <button
-                    onClick={onClose}
-                    className="absolute top-2 right-2 p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors"
+                    onClick={handleClose}
+                    className="absolute top-2 right-2 p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600"
+                    aria-label="Fermer"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -61,6 +167,20 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                 </button>
 
                 <div className="p-6 overflow-y-auto custom-scrollbar">
+                    {/* Conflict Warning */}
+                    {isEditingConflict && conflictEditor && (
+                        <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                            <div className="flex items-center">
+                                <svg className="w-5 h-5 text-yellow-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                                <p className="text-sm text-yellow-800">
+                                    <strong>{conflictEditor.userName}</strong> est en train d&apos;éditer cette carte. Vos modifications pourraient être écrasées.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Header Section */}
                     <div className="mb-6">
                         <div className="flex items-start gap-3 mb-1">
@@ -72,7 +192,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                     type="text"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="w-full text-xl font-semibold bg-transparent border-2 border-transparent focus:bg-white focus:border-blue-600 rounded px-2 py-1 -ml-2 transition-colors text-[#172b4d]"
+                                    className="w-full text-xl font-semibold bg-transparent border-2 border-transparent focus:bg-white focus:border-blue-600 rounded px-2 py-1 -ml-2 transition-colors text-[#172b4d] focus:outline-none"
                                 />
                                 <p className="text-sm text-gray-500 mt-1">dans la liste <span className="underline decoration-1 cursor-pointer">À faire</span></p>
                             </div>
@@ -82,7 +202,7 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                     {/* Labels Section */}
                     {card.labels && card.labels.length > 0 && (
                         <div className="mb-6">
-                            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Labels</h3>
+                            <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Étiquettes</h3>
                             <div className="flex flex-wrap gap-1">
                                 {card.labels.map(label => (
                                     <div
@@ -98,9 +218,95 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                         </div>
                     )}
 
-                    <div className="flex gap-8">
+                    {/* Due Date Section */}
+                    {dueDate && (
+                        <div className="mb-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <h3 className="font-semibold text-[#172b4d]">Date d&apos;échéance</h3>
+                            </div>
+                            <div className="ml-9 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="datetime-local"
+                                        value={dueDate ? new Date(dueDate).toISOString().slice(0, 16) : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value ? new Date(e.target.value).toISOString() : '';
+                                            setDueDate(val);
+                                            // Handle manual clear from input if browser supports it
+                                            if (!val) setDueDate('');
+                                        }}
+                                        className="flex-1 bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded-lg px-3 py-2 text-sm text-[#172b4d] transition-colors focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                                    />
+                                    <button
+                                        onClick={() => setDueDate('')}
+                                        className="text-gray-500 hover:text-gray-700 p-1"
+                                        title="Supprimer la date"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={isDone}
+                                        onChange={(e) => setIsDone(e.target.checked)}
+                                        className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                                    />
+                                    <span className="text-sm text-gray-700">Marquer comme terminée</span>
+                                </label>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col md:flex-row gap-8">
                         {/* Main Content */}
                         <div className="flex-1">
+                            {/* Priority and Size Section */}
+                            <div className="mb-6 flex gap-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        <h3 className="font-semibold text-[#172b4d]">Priorité</h3>
+                                    </div>
+                                    <div className="ml-7">
+                                        <select
+                                            value={priority}
+                                            onChange={(e) => setPriority(e.target.value)}
+                                            className="w-full bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded px-3 py-2 text-sm text-[#172b4d] transition-colors focus:ring-2 focus:ring-blue-600 focus:outline-none appearance-none"
+                                        >
+                                            <option value="">Aucune</option>
+                                            <option value="Low">Basse</option>
+                                            <option value="Medium">Moyenne</option>
+                                            <option value="High">Haute</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        <h3 className="font-semibold text-[#172b4d]">Taille</h3>
+                                    </div>
+                                    <div className="ml-7">
+                                        <input
+                                            type="text"
+                                            value={size}
+                                            onChange={(e) => setSize(e.target.value)}
+                                            placeholder="Ex: 5, XS..."
+                                            className="w-full bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded px-3 py-2 text-sm text-[#172b4d] transition-colors focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Description Section */}
                             <div className="mb-6">
                                 <div className="flex items-center gap-3 mb-2">
@@ -114,40 +320,131 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         placeholder="Ajouter une description plus détaillée..."
-                                        className="w-full min-h-[108px] bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded-lg p-3 text-sm text-[#172b4d] placeholder-gray-500 transition-colors focus:ring-2 focus:ring-blue-600 resize-y"
+                                        className="w-full min-h-[108px] bg-gray-100 hover:bg-gray-200 focus:bg-white border-none rounded-lg p-3 text-sm text-[#172b4d] placeholder-gray-500 transition-colors focus:ring-2 focus:ring-blue-600 resize-y focus:outline-none"
                                     />
                                     <div className="mt-2 flex gap-2">
                                         <button
                                             onClick={handleSave}
-                                            className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-medium text-sm transition-colors"
+                                            className="bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600"
                                         >
                                             Enregistrer
                                         </button>
                                         <button
-                                            onClick={onClose}
-                                            className="text-gray-700 px-4 py-1.5 rounded hover:bg-gray-200 font-medium text-sm transition-colors"
+                                            onClick={handleClose}
+                                            className="text-gray-700 px-4 py-1.5 rounded hover:bg-gray-200 font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
                                         >
                                             Annuler
                                         </button>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Checklists Section */}
+                            <div className="mb-6">
+                                {checklists.map(checklist => (
+                                    <ChecklistSection
+                                        key={checklist.id}
+                                        checklist={checklist}
+                                        onUpdate={fetchChecklists}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* Attachments Upload Zone - only show if no attachments */}
+                            {!hasAttachments && (
+                                <AttachmentUploadZone
+                                    cardId={card.id}
+                                    onUploadComplete={() => {
+                                        setAttachmentRefresh(prev => prev + 1);
+                                        setHasAttachments(true);
+                                        onLabelsUpdated?.();
+                                    }}
+                                />
+                            )}
+
+                            {/* Attachments Display */}
+                            <AttachmentsSection
+                                cardId={card.id}
+                                currentCoverId={card.coverId}
+                                refreshTrigger={attachmentRefresh}
+                                onCoverSet={() => {
+                                    onLabelsUpdated?.();
+                                }}
+                                onAttachmentsChange={(count) => setHasAttachments(count > 0)}
+                            />
                         </div>
 
                         {/* Sidebar */}
-                        <div className="w-48 space-y-2">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ajouter à la carte</h3>
-                            <SidebarButton icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />} label="Membres" />
-                            <SidebarButton
-                                ref={labelButtonRef}
-                                icon={<path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16z" />}
-                                label="Étiquettes"
-                                onClick={() => setShowLabelPicker(true)}
-                            />
-                            <SidebarButton icon={<path d="M5 13l4 4L19 7" />} label="Checklist" />
-                            <SidebarButton icon={<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />} label="Dates" />
+                        <div className="w-40">
+                            <h3 className="text-xs font-semibold text-gray-600 mb-2">AJOUTER À LA CARTE</h3>
+                            <div className="space-y-2">
+                                <SidebarButton
+                                    icon={<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />}
+                                    label="Membres"
+                                    onClick={onShowBoardMembers}
+                                />
+                                <SidebarButton
+                                    ref={labelButtonRef}
+                                    icon={
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                    }
+                                    label="Étiquettes"
+                                    onClick={() => setShowLabelPicker(!showLabelPicker)}
+                                />
+                                <SidebarButton
+                                    ref={coverButtonRef}
+                                    icon={
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                    }
+                                    label="Couverture"
+                                    onClick={() => setShowCoverPopup(!showCoverPopup)}
+                                />
+                                <SidebarButton
+                                    ref={checklistButtonRef}
+                                    icon={
+                                        <>
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" strokeWidth="2" fill="none" />
+                                            <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4" />
+                                        </>
+                                    }
+                                    label="Checklist"
+                                    onClick={() => setShowChecklistPopover(!showChecklistPopover)}
+                                />
+                                <SidebarButton
+                                    icon={
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <rect x="4" y="5" width="16" height="16" rx="2" strokeWidth="2" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 3v4M8 3v4M4 11h16" />
+                                        </svg>
+                                    }
+                                    label="Dates"
+                                    onClick={() => {
+                                        if (!dueDate) {
+                                            // Set default due date to tomorrow same time
+                                            const tomorrow = new Date();
+                                            tomorrow.setDate(tomorrow.getDate() + 1);
+                                            tomorrow.setMinutes(0);
+                                            setDueDate(tomorrow.toISOString());
+                                        }
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
+
+                    {/* Activity Section */}
+                    <ActivitySection
+                        cardId={card.id}
+                        currentUser={{
+                            id: currentUser.id,
+                            name: currentUser.name || currentUser.email,
+                            avatar: currentUser.avatar,
+                        }}
+                    />
                 </div>
 
                 {/* Label Picker */}
@@ -161,6 +458,28 @@ export function CardDetailModal({ card, boardId, onClose, onSave, onLabelsUpdate
                         anchorEl={labelButtonRef.current}
                     />
                 )}
+                {showCoverPopup && (
+                    <CoverPopup
+                        cardId={card.id}
+                        currentCoverId={card.coverId}
+                        currentCoverColor={card.coverColor}
+                        currentCoverSize={card.coverSize}
+                        anchorEl={coverButtonRef.current}
+                        onClose={() => setShowCoverPopup(false)}
+                        onCoverSet={() => {
+                            setAttachmentRefresh(prev => prev + 1);
+                            onLabelsUpdated?.();
+                        }}
+                    />
+                )}
+                {showChecklistPopover && (
+                    <ChecklistPopover
+                        cardId={card.id}
+                        anchorEl={checklistButtonRef.current}
+                        onClose={() => setShowChecklistPopover(false)}
+                        onChecklistCreated={fetchChecklists}
+                    />
+                )}
             </div>
         </div>,
         document.body
@@ -172,7 +491,7 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, { icon: React.ReactNod
         <button
             ref={ref}
             onClick={onClick}
-            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors text-left"
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm flex items-center gap-2 transition-colors text-left focus:outline-none focus:ring-2 focus:ring-gray-400"
         >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 {icon}
@@ -181,3 +500,4 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, { icon: React.ReactNod
         </button>
     );
 });
+

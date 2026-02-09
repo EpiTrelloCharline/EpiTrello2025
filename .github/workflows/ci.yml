@@ -71,6 +71,12 @@ jobs:
         env:
           DATABASE_URL: postgresql://trello:trello@localhost:5432/trello_test
 
+      - name: Run API E2E tests (Cards, Labels, Permissions)
+        run: cd apps/api && pnpm run test:e2e
+        env:
+          DATABASE_URL: postgresql://trello:trello@localhost:5432/trello_test
+          JWT_SECRET: test-secret-key-for-ci
+
       - name: Start API server
         run: cd apps/api && pnpm run start:prod &
         env:

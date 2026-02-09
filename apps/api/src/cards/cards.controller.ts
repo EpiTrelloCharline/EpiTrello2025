@@ -6,8 +6,11 @@ import { CardsService } from './cards.service';
 import { CreateCardDto } from './dto/create-card.dto';
 import { MoveCardDto } from './dto/move-card.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
+import { BatchMoveCardsDto } from './dto/batch-move-cards.dto';
+import { AssignMemberDto } from './dto/assign-member.dto';
 import { LabelsService } from '../labels/labels.service';
 import { AssignLabelDto } from '../labels/dto/assign-label.dto';
+import { ActivitiesService } from '../activities/activities.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('cards')
@@ -15,7 +18,21 @@ export class CardsController {
     constructor(
         private readonly cardsService: CardsService,
         private readonly labelsService: LabelsService,
+        private readonly activitiesService: ActivitiesService,
     ) { }
+
+    @Get(':id/activities')
+    getActivities(
+        @Param('id') id: string,
+        @Query('limit') limit: string,
+        @Query('offset') offset: string
+    ) {
+        return this.activitiesService.getCardActivities(
+            id,
+            limit ? parseInt(limit) : 20,
+            offset ? parseInt(offset) : 0
+        );
+    }
 
     @UseGuards(BoardReadGuard)
     @Get()
@@ -36,8 +53,20 @@ export class CardsController {
     }
 
     @UseGuards(BoardWriteGuard)
+    @Post('batch-move')
+    batchMove(@Body() batchMoveDto: BatchMoveCardsDto, @Request() req: any) {
+        return this.cardsService.batchMove(req.user.id, batchMoveDto);
+    }
+
+    @UseGuards(BoardWriteGuard)
     @Patch(':id')
     update(@Param('id') id: string, @Body() updateCardDto: UpdateCardDto, @Request() req: any) {
+        return this.cardsService.update(req.user.id, id, updateCardDto);
+    }
+
+    @UseGuards(BoardWriteGuard)
+    @Patch(':id/cover')
+    updateCover(@Param('id') id: string, @Body() updateCardDto: UpdateCardDto, @Request() req: any) {
         return this.cardsService.update(req.user.id, id, updateCardDto);
     }
 
@@ -86,5 +115,58 @@ export class CardsController {
         @Request() req: any,
     ) {
         return this.cardsService.duplicate(req.user.id, cardId);
+    }
+
+    @Get('archived')
+    getArchived(@Query('boardId') boardId: string, @Request() req: any) {
+        return this.cardsService.listArchived(req.user.id, boardId);
+    }
+
+    @UseGuards(BoardWriteGuard)
+    @Delete(':id/permanent')
+    deletePermanent(@Param('id') id: string, @Request() req: any) {
+        return this.cardsService.deletePermanent(req.user.id, id);
+    }
+
+    // ==================== MEMBER ASSIGNMENT ROUTES ====================
+
+    /**
+     * GET /cards/:id/members
+     * Get all members of a card
+     */
+    @Get(':id/members')
+    getMembers(
+        @Param('id') cardId: string,
+        @Request() req: any,
+    ) {
+        return this.cardsService.getMembers(req.user.id, cardId);
+    }
+
+    /**
+     * POST /cards/:id/members
+     * Add a member to a card
+     */
+    @UseGuards(BoardWriteGuard)
+    @Post(':id/members')
+    addMember(
+        @Param('id') cardId: string,
+        @Body() dto: AssignMemberDto,
+        @Request() req: any,
+    ) {
+        return this.cardsService.addMember(req.user.id, cardId, dto.userId);
+    }
+
+    /**
+     * DELETE /cards/:id/members/:userId
+     * Remove a member from a card
+     */
+    @UseGuards(BoardWriteGuard)
+    @Delete(':id/members/:userId')
+    removeMember(
+        @Param('id') cardId: string,
+        @Param('userId') memberUserId: string,
+        @Request() req: any,
+    ) {
+        return this.cardsService.removeMember(req.user.id, cardId, memberUserId);
     }
 }

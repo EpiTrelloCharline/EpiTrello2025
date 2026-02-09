@@ -12,7 +12,7 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const token = auth.slice('Bearer '.length);
-      const secret = process.env.JWT_ACCESS_SECRET || 'default-secret-change-in-production';
+      const secret = process.env.JWT_SECRET || 'default-secret-change-in-production';
       const payload = jwt.verify(token, secret) as any;
 
       req.user = { id: payload.sub, email: payload.email };

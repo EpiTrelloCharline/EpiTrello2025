@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Request,
@@ -17,6 +18,7 @@ import { BoardsService } from "./boards.service";
 
 import { CreateBoardDto } from "./dto/create-board.dto";
 import { InviteMemberDto } from "./dto/invite-member.dto";
+import { UpdateBoardDto } from "./dto/update-board.dto";
 
 import { ActivitiesService } from "../activities/activities.service";
 
@@ -64,6 +66,16 @@ export class BoardsController {
   @Get(":id/activity")
   getActivity(@Param("id") id: string) {
     return this.activitiesService.getBoardActivities(id);
+  }
+
+  @UseGuards(BoardAdminGuard)
+  @Patch(":id")
+  updateBoard(
+    @Param("id") id: string,
+    @Body() dto: UpdateBoardDto,
+    @Request() req: any,
+  ) {
+    return this.svc.updateBoard(req.user.id, id, dto);
   }
 }
 

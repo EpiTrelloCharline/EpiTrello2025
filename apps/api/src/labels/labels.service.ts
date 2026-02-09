@@ -6,7 +6,8 @@ import {
 
 import { PrismaService } from "../prisma.service";
 import { ActivitiesService } from "../activities/activities.service";
-import { ActivityType } from "@prisma/client";
+import { ActivityType, NotificationType } from "@prisma/client";
+import { NotificationsService } from "../notifications/notifications.service";
 
 import { CreateLabelDto } from "./dto/create-label.dto";
 import { UpdateLabelDto } from "./dto/update-label.dto";
@@ -16,6 +17,7 @@ export class LabelsService {
   constructor(
     private prisma: PrismaService,
     private activitiesService: ActivitiesService,
+    private notificationsService: NotificationsService,
   ) { }
 
   // ... (rest of the file until assignLabelToCard)
@@ -76,6 +78,15 @@ export class LabelsService {
       ActivityType.ADD_LABEL,
       card.id,
       `Étiquette "${label.name}" ajoutée à la carte "${card.title}"`
+    );
+
+    // Notify board members
+    await this.notificationsService.notifyBoardMembers(
+      boardId,
+      [userId],
+      NotificationType.LABEL_ADDED,
+      `Étiquette "${label.name}" ajoutée à la carte "${card.title}"`,
+      card.id,
     );
 
     return { message: "Label assigned successfully" };
@@ -203,6 +214,22 @@ export class LabelsService {
     await this.prisma.cardLabel.delete({
       where: { id: cardLabel.id },
     });
+
+    // Get label details for notification
+    const label = await this.prisma.label.findUnique({
+      where: { id: labelId },
+    });
+
+    if (label) {
+      // Notify board members
+      await this.notificationsService.notifyBoardMembers(
+        boardId,
+        [userId],
+        NotificationType.LABEL_REMOVED,
+        `Étiquette "${label.name}" retirée de la carte "${card.title}"`,
+        card.id,
+      );
+    }
 
     return { message: "Label removed successfully" };
   }

@@ -10,16 +10,27 @@ import {
   useDroppable,
   useSensors,
   useSensor,
-  PointerSensor
+  PointerSensor,
+  KeyboardSensor,
+  closestCorners,
+  MeasuringStrategy
 } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, horizontalListSortingStrategy, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { api, getCardsByList, createCard, moveCard, updateCard, updateList, deleteList } from '@/lib/api';
+import { api, getCardsByList, createCard, moveCard, updateCard, updateList, deleteList, batchMoveCards, batchMoveLists, updateBoard, CardPositionUpdate, ListPositionUpdate } from '@/lib/api';
 import { DraggableCard } from './DraggableCard';
 import { CardDetailModal } from './CardDetailModal';
 import { BoardMembers } from './BoardMembers';
 import { ActivitySidebar } from './ActivitySidebar';
+import { ListSkeleton } from '@/app/components/ListSkeleton';
+import { useWebSocket } from '@/app/context/WebSocketContext';
+import BoardSettingsMenu, { getTextColor } from './BoardSettingsMenu';
+import { SearchModal } from '@/app/components/SearchModal';
+import { NotificationBell } from '@/app/components/NotificationBell';
+import { FilterPopover, DateFilterType } from './FilterPopover';
+import { useDragAndDrop } from '@/app/hooks/useDragAndDrop';
+import { DragOverlayComponent } from './DragOverlayComponent';
 
 type List = { id: string; title: string; position: number };
 type Label = { id: string; name: string; color: string };
@@ -29,9 +40,17 @@ type Card = {
   id: string;
   listId: string;
   title: string;
+  description?: string;
   position: string;
   labels?: Label[];
   members?: User[]; // Card members are User objects from the API
+  dueDate?: string | null;
+  isDone?: boolean;
+  coverColor?: string | null;
+  coverUrl?: string;
+  coverSize?: string;
+  priority?: string | null;
+  size?: string | null;
 };
 
 type Board = {
@@ -40,6 +59,8 @@ type Board = {
   workspaceId: string;
   labels: Label[];
   members: Member[];
+  backgroundColor?: string | null;
+  backgroundImage?: string | null;
 };
 
 export default function BoardPage() {
@@ -47,20 +68,26 @@ export default function BoardPage() {
   const [lists, setLists] = useState<List[]>([]);
   const [cardsByList, setCardsByList] = useState<Record<string, Card[]>>({});
   const [title, setTitle] = useState('');
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [previousCardsByList, setPreviousCardsByList] = useState<Record<string, Card[]>>({});
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // WebSocket hook
+  const { socket, isConnected, joinBoard, leaveBoard } = useWebSocket();
 
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('none');
   const [board, setBoard] = useState<Board | null>(null);
 
   // Activity Sidebar State
   const [isActivitySidebarOpen, setIsActivitySidebarOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isBoardMembersOpen, setIsBoardMembersOpen] = useState(false);
 
-  const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0;
+  const isFiltering = searchTerm.trim() !== "" || selectedLabelIds.length > 0 || selectedMemberIds.length > 0 || dateFilter !== 'none';
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
 
   // Debug log
@@ -71,13 +98,39 @@ export default function BoardPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8, // Increased for better touch support
       },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
+  // Advanced Drag & Drop hook
+  const {
+    activeId,
+    activeType,
+    activeItem,
+    isSyncing,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel,
+    findCard,
+    findListContainingCard,
+  } = useDragAndDrop({
+    lists,
+    cardsByList,
+    boardId: params?.id || '',
+    setLists,
+    setCardsByList,
+    isFiltering,
+  });
+
   const fetchBoardData = useCallback(() => {
     if (!token || !params?.id) return;
+
+    setIsLoading(true);
 
     // Fetch Board Details (for labels/members)
     api(`/boards/${params.id}`)
@@ -103,6 +156,10 @@ export default function BoardPage() {
       .catch(err => {
         console.error(err);
         setLists([]);
+      })
+      .finally(() => {
+        // We might want to keep loading true until cards are loaded too, 
+        // but for now let's just show lists skeleton until lists are fetched
       });
   }, [token, params?.id, setBoard, setLists]);
 
@@ -110,8 +167,214 @@ export default function BoardPage() {
     fetchBoardData();
   }, [fetchBoardData]);
 
+  // Join board via WebSocket
+  useEffect(() => {
+    if (params?.id && isConnected) {
+      joinBoard(params.id);
+      console.log('Joined board via WebSocket:', params.id);
+
+      return () => {
+        leaveBoard(params.id);
+        console.log('Left board via WebSocket:', params.id);
+      };
+    }
+  }, [params?.id, isConnected, joinBoard, leaveBoard]);
+
+  // Listen to WebSocket events
+  useEffect(() => {
+    if (!socket) return;
+
+    // Card events
+    const handleCardCreated = (data: { card: Card; listId: string }) => {
+      console.log('Card created event:', data);
+      setCardsByList(prev => {
+        const currentCards = prev[data.listId] || [];
+        // Check if card already exists (avoid duplicates)
+        if (currentCards.some(c => c.id === data.card.id)) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [data.listId]: [...currentCards, data.card],
+        };
+      });
+    };
+
+    const handleCardMoved = (data: { card: Card; fromListId: string; toListId: string }) => {
+      console.log('Card moved event:', data);
+      setCardsByList(prev => {
+        const newState = { ...prev };
+
+        // Remove from source list
+        if (newState[data.fromListId]) {
+          newState[data.fromListId] = newState[data.fromListId].filter(c => c.id !== data.card.id);
+        }
+
+        // Add to target list or update if already exists
+        if (newState[data.toListId]) {
+          const existingIndex = newState[data.toListId].findIndex(c => c.id === data.card.id);
+          if (existingIndex !== -1) {
+            newState[data.toListId][existingIndex] = data.card;
+          } else {
+            newState[data.toListId] = [...newState[data.toListId], data.card];
+          }
+        } else {
+          newState[data.toListId] = [data.card];
+        }
+
+        return newState;
+      });
+    };
+
+    const handleCardUpdated = (data: { card: Card }) => {
+      console.log('Card updated event:', data);
+      setCardsByList(prev => {
+        const listId = data.card.listId;
+        if (!prev[listId]) return prev;
+
+        return {
+          ...prev,
+          [listId]: prev[listId].map(c =>
+            c.id === data.card.id ? { ...c, ...data.card } : c
+          ),
+        };
+      });
+
+      // Update selected card if it's the one being edited
+      setSelectedCard(current =>
+        current?.id === data.card.id ? { ...current, ...data.card } : current
+      );
+    };
+
+    const handleCardDeleted = (data: { cardId: string; listId: string }) => {
+      console.log('Card deleted event:', data);
+      setCardsByList(prev => ({
+        ...prev,
+        [data.listId]: (prev[data.listId] || []).filter(c => c.id !== data.cardId),
+      }));
+
+      // Close modal if deleted card was selected
+      setSelectedCard(current =>
+        current?.id === data.cardId ? null : current
+      );
+    };
+
+    // List events
+    const handleListCreated = (data: { list: List }) => {
+      console.log('List created event:', data);
+      setLists(prev => {
+        // Avoid duplicates
+        if (prev.some(l => l.id === data.list.id)) {
+          return prev;
+        }
+        return [...prev, data.list];
+      });
+      setCardsByList(prev => ({
+        ...prev,
+        [data.list.id]: [],
+      }));
+    };
+
+    const handleListUpdated = (data: { list: List }) => {
+      console.log('List updated event:', data);
+      setLists(prev =>
+        prev.map(l => l.id === data.list.id ? data.list : l)
+      );
+    };
+
+    const handleListDeleted = (data: { listId: string }) => {
+      console.log('List deleted event:', data);
+      setLists(prev => prev.filter(l => l.id !== data.listId));
+      setCardsByList(prev => {
+        const newState = { ...prev };
+        delete newState[data.listId];
+        return newState;
+      });
+    };
+
+    // Handle batch updates from other clients
+    const handleBoardUpdated = (data: { type: string; cards?: { cardId: string; listId: string; position: number }[]; lists?: { listId: string; position: number }[] }) => {
+      console.log('Board updated event:', data);
+
+      if (data.type === 'batch-cards-moved' && data.cards) {
+        // Update card positions
+        setCardsByList(prev => {
+          const newState = { ...prev };
+
+          for (const update of data.cards!) {
+            // Find and update card position
+            for (const listId of Object.keys(newState)) {
+              const cardIndex = newState[listId].findIndex(c => c.id === update.cardId);
+              if (cardIndex !== -1) {
+                const card = newState[listId][cardIndex];
+
+                // If card moved to different list
+                if (card.listId !== update.listId) {
+                  // Remove from old list
+                  newState[listId] = newState[listId].filter(c => c.id !== update.cardId);
+                  // Add to new list
+                  const updatedCard = { ...card, listId: update.listId, position: String(update.position) };
+                  newState[update.listId] = [...(newState[update.listId] || []), updatedCard];
+                } else {
+                  // Update position in same list
+                  newState[listId][cardIndex] = { ...card, position: String(update.position) };
+                }
+                break;
+              }
+            }
+          }
+
+          // Sort cards by position in each list
+          for (const listId of Object.keys(newState)) {
+            newState[listId] = newState[listId].sort((a, b) => parseFloat(a.position) - parseFloat(b.position));
+          }
+
+          return newState;
+        });
+      }
+
+      if (data.type === 'batch-lists-moved' && data.lists) {
+        // Update list positions
+        setLists(prev => {
+          const newLists = prev.map(list => {
+            const update = data.lists!.find(u => u.listId === list.id);
+            return update ? { ...list, position: update.position } : list;
+          });
+          return newLists.sort((a, b) => a.position - b.position);
+        });
+      }
+    };
+
+    // Register event listeners
+    socket.on('cardCreated', handleCardCreated);
+    socket.on('cardMoved', handleCardMoved);
+    socket.on('cardUpdated', handleCardUpdated);
+    socket.on('cardDeleted', handleCardDeleted);
+    socket.on('listCreated', handleListCreated);
+    socket.on('listUpdated', handleListUpdated);
+    socket.on('listDeleted', handleListDeleted);
+    socket.on('boardUpdated', handleBoardUpdated);
+
+    // Cleanup
+    return () => {
+      socket.off('cardCreated', handleCardCreated);
+      socket.off('cardMoved', handleCardMoved);
+      socket.off('cardUpdated', handleCardUpdated);
+      socket.off('cardDeleted', handleCardDeleted);
+      socket.off('listCreated', handleListCreated);
+      socket.off('listUpdated', handleListUpdated);
+      socket.off('listDeleted', handleListDeleted);
+      socket.off('boardUpdated', handleBoardUpdated);
+    };
+  }, [socket]);
+
   useEffect(() => {
     async function loadCards() {
+      if (lists.length === 0) {
+        setIsLoading(false);
+        return;
+      }
+
       const results = await Promise.all(
         lists.map(async (list) => {
           let cards: Card[] = [];
@@ -137,11 +400,10 @@ export default function BoardPage() {
         map[listId] = cards;
       }
       setCardsByList(map);
+      setIsLoading(false);
     }
 
-    if (lists.length > 0) {
-      loadCards();
-    }
+    loadCards();
   }, [lists]);
 
   const ids = useMemo(() => lists.map(l => l.id), [lists]);
@@ -160,7 +422,12 @@ export default function BoardPage() {
     const after = lists.length ? lists[lists.length - 1].id : undefined;
     const r = await api('/lists', { method: 'POST', body: JSON.stringify({ boardId: params.id, title, after }) });
     const l = await r.json();
-    setLists(prev => [...prev, l]);
+
+    // Only add locally if WebSocket is not connected (fallback)
+    // The WebSocket 'listCreated' event will handle the update when connected
+    if (!socket?.connected) {
+      setLists(prev => [...prev, l]);
+    }
     setTitle('');
   }
 
@@ -183,8 +450,41 @@ export default function BoardPage() {
       if (!hasMember) return false;
     }
 
+    // Date filter logic
+    if (dateFilter !== 'none') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfWeek = new Date(today);
+      endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
+
+      switch (dateFilter) {
+        case 'overdue':
+          if (!card.dueDate) return false;
+          const dueDate = new Date(card.dueDate);
+          if (dueDate >= today || card.isDone) return false;
+          break;
+        case 'dueToday':
+          if (!card.dueDate) return false;
+          const dueDateToday = new Date(card.dueDate);
+          const dueDateOnlyToday = new Date(dueDateToday.getFullYear(), dueDateToday.getMonth(), dueDateToday.getDate());
+          if (dueDateOnlyToday.getTime() !== today.getTime()) return false;
+          break;
+        case 'dueThisWeek':
+          if (!card.dueDate) return false;
+          const dueDateWeek = new Date(card.dueDate);
+          if (dueDateWeek < today || dueDateWeek > endOfWeek) return false;
+          break;
+        case 'noDueDate':
+          if (card.dueDate) return false;
+          break;
+        case 'completed':
+          if (!card.isDone) return false;
+          break;
+      }
+    }
+
     return true;
-  }, [searchTerm, selectedLabelIds, selectedMemberIds]);
+  }, [searchTerm, selectedLabelIds, selectedMemberIds, dateFilter]);
 
   const filteredCardsByList = useMemo(() => {
     return Object.fromEntries(
@@ -195,7 +495,7 @@ export default function BoardPage() {
     );
   }, [cardsByList, cardMatchesFilters]);
 
-  // Helper: Find card location in state
+  // Helper: Find card location in state (kept for other functions)
   function findCardLocation(
     cardId: string,
     state: Record<string, Card[]>
@@ -207,126 +507,6 @@ export default function BoardPage() {
       }
     }
     return null;
-  }
-
-  // Helper: Compute new position based on surrounding cards
-  function computeNewPosition(cards: Card[], index: number): number {
-    if (cards.length === 0) return 1;
-    if (index === 0) {
-      // Before first card
-      const firstPos = parseFloat(cards[0].position);
-      return firstPos - 1;
-    }
-    if (index >= cards.length) {
-      // After last card
-      const lastPos = parseFloat(cards[cards.length - 1].position);
-      return lastPos + 1;
-    }
-    // Between two cards
-    const prevPos = parseFloat(cards[index - 1].position);
-    const nextPos = parseFloat(cards[index].position);
-    return (prevPos + nextPos) / 2;
-  }
-
-  // Unified drag handler for both lists and cards
-  function handleDragStart(event: DragStartEvent) {
-    const draggedId = event.active.id as string;
-
-    // Check if it's a card
-    const cardLocation = findCardLocation(draggedId, cardsByList);
-    if (cardLocation) {
-      setActiveCardId(draggedId);
-      setPreviousCardsByList(JSON.parse(JSON.stringify(cardsByList)));
-    }
-    // If it's a list, we don't need to do anything special
-  }
-
-  async function handleDragEnd(event: DragEndEvent) {
-    if (isFiltering) return; // Disable drag when filtering
-
-    const { active, over } = event;
-    if (!over) return;
-
-    const draggedId = active.id as string;
-    const overId = over.id as string;
-
-    // Check if we're dragging a card
-    const cardLocation = findCardLocation(draggedId, cardsByList);
-
-    if (cardLocation) {
-      // CARD DRAGGING
-      setActiveCardId(null);
-
-      const { listId: sourceListId, index: sourceIndex } = cardLocation;
-      let targetListId: string;
-      let targetIndex: number;
-
-      // Check if dropping over another card
-      const targetCardLocation = findCardLocation(overId, cardsByList);
-
-      if (targetCardLocation) {
-        targetListId = targetCardLocation.listId;
-        targetIndex = targetCardLocation.index;
-      } else if (overId.startsWith('list-')) {
-        targetListId = overId.replace('list-', '');
-        const targetCards = cardsByList[targetListId] || [];
-        targetIndex = targetCards.length;
-      } else {
-        return;
-      }
-
-      if (sourceListId === targetListId && sourceIndex === targetIndex) return;
-
-      // Optimistic update
-      const newState = { ...cardsByList };
-      const sourceCards = [...(newState[sourceListId] || [])];
-      const [movedCard] = sourceCards.splice(sourceIndex, 1);
-      movedCard.listId = targetListId;
-
-      if (sourceListId === targetListId) {
-        const adjustedIndex = targetIndex > sourceIndex ? targetIndex - 1 : targetIndex;
-        sourceCards.splice(adjustedIndex, 0, movedCard);
-        newState[sourceListId] = sourceCards;
-      } else {
-        newState[sourceListId] = sourceCards;
-        const targetCards = [...(newState[targetListId] || [])];
-        targetCards.splice(targetIndex, 0, movedCard);
-        newState[targetListId] = targetCards;
-      }
-
-      setCardsByList(newState);
-
-      const finalCards = newState[targetListId];
-      const finalIndex = finalCards.findIndex((c) => c.id === draggedId);
-      const newPosition = computeNewPosition(finalCards, finalIndex);
-
-      try {
-        await moveCard(draggedId, targetListId, newPosition);
-      } catch (error) {
-        console.error('Failed to move card:', error);
-        setCardsByList(previousCardsByList);
-        alert('Échec du déplacement de la carte. Les modifications ont été annulées.');
-      }
-    } else {
-      // LIST DRAGGING
-      if (active.id === over.id) return;
-
-      const oldIndex = lists.findIndex(l => l.id === active.id);
-      if (oldIndex === -1) return;
-
-      const newIndex = lists.findIndex(l => l.id === over.id);
-      if (newIndex === -1) return;
-
-      const next = arrayMove(lists, oldIndex, newIndex);
-      const updated = next.map((l, i) => ({ ...l, position: i + 1 }));
-      setLists(updated);
-
-      await api('/lists/move', {
-        method: 'POST', body: JSON.stringify({
-          listId: active.id, boardId: params.id, newPosition: updated.find(l => l.id === active.id)!.position
-        })
-      });
-    }
   }
 
   // Handle card deletion
@@ -419,6 +599,36 @@ export default function BoardPage() {
     }
   }
 
+  async function handleBackgroundChange(backgroundColor: string | null, backgroundImage: string | null) {
+    if (!board) return;
+
+    try {
+      const updatedBoard = await updateBoard(board.id, { backgroundColor, backgroundImage });
+      setBoard(updatedBoard);
+    } catch (error) {
+      console.error('Failed to update board background:', error);
+      alert('Échec de la mise à jour de l\'apparence du board.');
+    }
+  }
+
+  async function handleTitleChange(newTitle: string) {
+    if (!board || !newTitle.trim()) return;
+
+    const previousBoard = { ...board };
+
+    // Optimistic update
+    setBoard(prev => prev ? { ...prev, title: newTitle } : prev);
+
+    try {
+      const updatedBoard = await updateBoard(board.id, { title: newTitle });
+      setBoard(updatedBoard);
+    } catch (error) {
+      console.error('Failed to update board title:', error);
+      setBoard(previousBoard);
+      alert('Échec de la mise à jour du titre du board.');
+    }
+  }
+
   async function handleDeleteList(listId: string) {
     // Optimistic update
     const previousLists = [...lists];
@@ -441,11 +651,72 @@ export default function BoardPage() {
     }
   }
 
+  async function handleDuplicateCard(cardId: string) {
+    const cardLoc = findCardLocation(cardId, cardsByList);
+    if (!cardLoc) return;
+
+    const card = cardsByList[cardLoc.listId][cardLoc.index];
+
+    try {
+      const created = await createCard(cardLoc.listId, `${card.title} (Copie)`);
+
+      // Update with full data if needed (description, etc.)
+      const updateData: any = {};
+      if (card.description) updateData.description = card.description;
+      if (card.coverColor) updateData.coverColor = card.coverColor;
+      if (card.coverUrl) updateData.coverUrl = card.coverUrl;
+      if (card.coverSize) updateData.coverSize = card.coverSize;
+      if (card.priority) updateData.priority = card.priority;
+      if (card.size) updateData.size = card.size;
+
+      if (Object.keys(updateData).length > 0) {
+        await updateCard(created.id, updateData);
+      }
+
+      // Refresh list to get updated card with all data
+      const result = await getCardsByList(cardLoc.listId);
+      if (Array.isArray(result)) {
+        const transformedCards = result.map(c => ({
+          ...c,
+          labels: c.labels?.map((cl: any) => cl.label) || []
+        }));
+        setCardsByList(prev => ({ ...prev, [cardLoc.listId]: transformedCards }));
+      }
+    } catch (e) {
+      console.error('Failed to duplicate card:', e);
+      alert('Échec de la duplication de la carte');
+    }
+  }
+
+  // Calculate text color based on background
+  const textColor = board?.backgroundColor ? getTextColor(board.backgroundColor) : '#ffffff';
+  const backgroundStyle = board?.backgroundColor
+    ? { background: board.backgroundColor }
+    : board?.backgroundImage
+      ? { backgroundImage: `url(${board.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+      : { backgroundColor: '#0079bf' };
+
   return (
-    <div className="h-screen flex flex-col bg-[#0079bf]">
-      {/* Header du board */}
-      <div className="h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 text-white gap-4">
+    <div className="h-screen flex flex-col" style={backgroundStyle}>
+      {/* Board Header */}
+      <div className="relative z-50 h-auto min-h-12 bg-black/20 backdrop-blur-sm flex flex-col md:flex-row items-center px-4 py-2 gap-4" style={{ color: textColor }}>
+        <a
+          href={board?.workspaceId ? `/workspaces/${board.workspaceId}/boards` : '/workspaces'}
+          className="p-1.5 hover:bg-white/20 rounded transition-colors mr-1"
+          title="Retour aux tableaux"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+        </a>
         <div className="font-bold text-lg">Epi Trello</div>
+
+        {/* Board Title */}
+        {board && (
+          <div className="font-semibold text-lg bg-white/10 px-3 py-1 rounded" title={board.title}>
+            {board.title}
+          </div>
+        )}
 
         {/* Board Members & Invite */}
         {board && (
@@ -453,14 +724,17 @@ export default function BoardPage() {
             board={board}
             members={board.members}
             onMemberAdded={fetchBoardData}
+            showMembersList={isBoardMembersOpen}
+            setShowMembersList={setIsBoardMembersOpen}
           />
         )}
 
         {/* Activity Button */}
         <button
           onClick={() => setIsActivitySidebarOpen(true)}
-          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors text-white"
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
           title="Voir l'historique des activités"
+          style={{ color: textColor }}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -468,58 +742,74 @@ export default function BoardPage() {
           <span className="hidden md:inline">Historique</span>
         </button>
 
+        {/* Notifications Bell */}
+        <div className="bg-white/20 rounded-full hover:bg-white/30 transition-colors">
+          <NotificationBell boardId={params.id} />
+        </div>
+
+        {/* Board Settings Menu */}
+        {board && (
+          <BoardSettingsMenu
+            boardId={board.id}
+            boardTitle={board.title}
+            currentBackgroundColor={board.backgroundColor}
+            currentBackgroundImage={board.backgroundImage}
+            onBackgroundChange={handleBackgroundChange}
+            onTitleChange={handleTitleChange}
+          />
+        )}
+
         <div className="flex flex-wrap items-center gap-4 flex-1">
           {/* Search Bar */}
           <input
             type="text"
             placeholder="Rechercher une carte..."
-            className="bg-white/20 text-white placeholder-white/70 px-3 py-1.5 rounded text-sm border border-transparent focus:border-blue-300 focus:outline-none focus:bg-white/30 transition-all"
+            className="bg-white/20 placeholder-white/70 px-3 py-1.5 rounded text-sm border border-transparent focus:border-blue-300 focus:outline-none focus:bg-white/30 transition-all"
+            style={{ color: textColor }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
 
-
-
-          {/* Member Filter */}
-          {board?.members && board.members.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium opacity-80">Membres:</span>
-              <div className="flex -space-x-2 overflow-hidden p-1">
-                {board.members.map(member => {
-                  const isSelected = selectedMemberIds.includes(member.userId);
-                  return (
-                    <button
-                      key={member.id}
-                      onClick={() => {
-                        setSelectedMemberIds(prev =>
-                          isSelected ? prev.filter(id => id !== member.userId) : [...prev, member.userId]
-                        );
-                      }}
-                      className={`relative w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-transform ${isSelected ? 'border-blue-400 z-10 scale-110' : 'border-transparent hover:z-10 hover:scale-105'
-                        }`}
-                      style={{ backgroundColor: '#dfe1e6', color: '#172b4d' }}
-                      title={member.user.name || member.user.email}
-                    >
-                      {member.user.name ? member.user.name[0].toUpperCase() : member.user.email[0].toUpperCase()}
-                      {isSelected && (
-                        <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full w-3 h-3 border border-white"></div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          {/* Filter Popover */}
+          {board && (
+            <FilterPopover
+              labels={board.labels || []}
+              members={board.members || []}
+              selectedLabelIds={selectedLabelIds}
+              selectedMemberIds={selectedMemberIds}
+              dateFilter={dateFilter}
+              onLabelToggle={(labelId) => {
+                setSelectedLabelIds(prev =>
+                  prev.includes(labelId) ? prev.filter(id => id !== labelId) : [...prev, labelId]
+                );
+              }}
+              onMemberToggle={(memberId) => {
+                setSelectedMemberIds(prev =>
+                  prev.includes(memberId) ? prev.filter(id => id !== memberId) : [...prev, memberId]
+                );
+              }}
+              onDateFilterChange={setDateFilter}
+              onClearAll={() => {
+                setSearchTerm("");
+                setSelectedLabelIds([]);
+                setSelectedMemberIds([]);
+                setDateFilter('none');
+              }}
+              textColor={textColor}
+            />
           )}
 
-          {/* Clear Filters */}
+          {/* Clear Filters Button */}
           {isFiltering && (
             <button
               onClick={() => {
                 setSearchTerm("");
                 setSelectedLabelIds([]);
                 setSelectedMemberIds([]);
+                setDateFilter('none');
               }}
-              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-white transition-colors"
+              className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300"
+              style={{ color: textColor }}
             >
               Effacer filtres
             </button>
@@ -530,28 +820,47 @@ export default function BoardPage() {
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
         <DndContext
           sensors={sensors}
+          collisionDetection={closestCorners}
           onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+          measuring={{
+            droppable: {
+              strategy: MeasuringStrategy.Always,
+            },
+          }}
         >
           <div className="h-full flex items-start gap-4">
-            <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
-              {lists.map(l => (
-                <Column
-                  key={l.id}
-                  id={l.id}
-                  title={l.title}
-                  cards={filteredCardsByList[l.id] ?? []}
-                  setCardsByList={setCardsByList}
-                  onDeleteCard={handleDeleteCard}
-                  onUpdateCard={handleUpdateCard}
-                  onCardClick={setSelectedCard}
-                  onUpdateList={handleUpdateList}
-                  onDeleteList={handleDeleteList}
-                  isDragDisabled={isFiltering}
-                  boardId={params.id}
-                />
-              ))}
-            </SortableContext>
+            {isLoading ? (
+              <>
+                <ListSkeleton />
+                <ListSkeleton />
+                <ListSkeleton />
+              </>
+            ) : (
+              <SortableContext items={ids} strategy={horizontalListSortingStrategy}>
+                {lists.map(l => (
+                  <Column
+                    key={l.id}
+                    id={l.id}
+                    title={l.title}
+                    cards={filteredCardsByList[l.id] ?? []}
+                    setCardsByList={setCardsByList}
+                    onDeleteCard={handleDeleteCard}
+                    onUpdateCard={handleUpdateCard}
+                    onCardClick={setSelectedCard}
+                    onUpdateList={handleUpdateList}
+                    onDeleteList={handleDeleteList}
+                    onDuplicateCard={handleDuplicateCard}
+                    isDragDisabled={isFiltering}
+                    boardId={params.id}
+                    isCardDragging={activeType === 'card'}
+                    activeCardId={activeId as string}
+                  />
+                ))}
+              </SortableContext>
+            )}
 
             {/* Formulaire création liste */}
             <div className="min-w-[272px] bg-white/25 rounded-xl p-3 hover:bg-white/20 transition-colors">
@@ -569,13 +878,13 @@ export default function BoardPage() {
                     }}
                   />
                   <div className="flex items-center gap-2">
-                    <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700" onClick={createList}>Ajouter une liste</button>
-                    <button className="text-gray-600 hover:text-gray-800" onClick={() => setTitle('')}>✕</button>
+                    <button className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600" onClick={createList}>Ajouter une liste</button>
+                    <button className="text-gray-600 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 rounded" onClick={() => setTitle('')}>✕</button>
                   </div>
                 </div>
               ) : (
                 <button
-                  className="w-full text-left text-white font-medium flex items-center gap-2 px-2 py-1"
+                  className="w-full text-left text-white font-medium flex items-center gap-2 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 rounded"
                   onClick={() => setTitle(' ')} // Hack to show input
                 >
                   <span>+</span> Ajouter une autre liste
@@ -583,7 +892,25 @@ export default function BoardPage() {
               )}
             </div>
           </div>
+
+          {/* Drag Overlay for smooth visual feedback */}
+          <DragOverlayComponent
+            activeType={activeType}
+            activeItem={activeItem}
+            cardCount={activeType === 'list' && activeId ? (cardsByList[activeId as string] || []).length : 0}
+          />
         </DndContext>
+
+        {/* Syncing indicator */}
+        {isSyncing && (
+          <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50">
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Synchronisation...
+          </div>
+        )}
       </div>
 
       {selectedCard && (
@@ -593,18 +920,20 @@ export default function BoardPage() {
           onClose={() => setSelectedCard(null)}
           onSave={handleSaveCardDetails}
           onLabelsUpdated={() => {
-            // Refetch cards to get updated labels
-            const listId = selectedCard.listId;
-            getCardsByList(listId).then(result => {
-              if (Array.isArray(result)) {
-                const transformedCards = result.map(card => ({
-                  ...card,
-                  labels: card.labels?.map((cl: any) => cl.label) || []
-                }));
-                setCardsByList(prev => ({ ...prev, [listId]: transformedCards }));
-              }
-            });
+            if (selectedCard) {
+              const listId = selectedCard.listId;
+              getCardsByList(listId).then(result => {
+                if (Array.isArray(result)) {
+                  const transformedCards = result.map(card => ({
+                    ...card,
+                    labels: card.labels?.map((cl: any) => cl.label) || []
+                  }));
+                  setCardsByList(prev => ({ ...prev, [listId]: transformedCards }));
+                }
+              });
+            }
           }}
+          onShowBoardMembers={() => setIsBoardMembersOpen(true)}
         />
       )}
 
@@ -616,12 +945,30 @@ export default function BoardPage() {
           onClose={() => setIsActivitySidebarOpen(false)}
         />
       )}
+
+      {isSearchModalOpen && params?.id && (
+        <SearchModal
+          boardId={params.id}
+          onClose={() => setIsSearchModalOpen(false)}
+          onCardClick={(cardId) => {
+            const cardLoc = findCardLocation(cardId, cardsByList);
+            if (cardLoc) {
+              const card = cardsByList[cardLoc.listId][cardLoc.index];
+              setSelectedCard(card);
+            } else {
+              api(`/cards/${cardId}`).then(r => r.json()).then(card => {
+                if (card && card.id) setSelectedCard(card);
+              });
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // ——— Composant colonne sortable ———
-function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, onUpdateList, onDeleteList, isDragDisabled, boardId }: {
+function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, onCardClick, onUpdateList, onDeleteList, onDuplicateCard, isDragDisabled, boardId, isCardDragging, activeCardId }: {
   id: string;
   title: string;
   cards: Card[];
@@ -631,12 +978,19 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
   onCardClick: (card: Card) => void;
   onUpdateList: (listId: string, newTitle: string) => void;
   onDeleteList: (listId: string) => void;
+  onDuplicateCard?: (cardId: string) => void;
   isDragDisabled: boolean;
   boardId: string;
+  isCardDragging?: boolean;
+  activeCardId?: string;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-  const { setNodeRef: setDroppableRef } = useDroppable({ id: `list-${id}` });
-  const style = { transform: CSS.Translate.toString(transform), transition };
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: `list-${id}` });
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
   const [isAdding, setIsAdding] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -814,7 +1168,11 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
         </div>
       )}
 
-      <div ref={setDroppableRef} className="space-y-2 overflow-y-auto flex-1 min-h-[100px] px-1 custom-scrollbar">
+      <div
+        ref={setDroppableRef}
+        className={`space-y-2 overflow-y-auto flex-1 min-h-[100px] px-1 custom-scrollbar rounded-lg transition-colors duration-200 ${isOver && isCardDragging ? 'bg-blue-100/50 ring-2 ring-blue-400 ring-inset' : ''
+          }`}
+      >
         <SortableContext items={cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
           {Array.isArray(cards) && cards.map((card) => (
             <DraggableCard
@@ -825,6 +1183,8 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
               onUpdate={onUpdateCard}
               onClick={() => onCardClick(card)}
               isDragDisabled={isDragDisabled}
+              isDragOverlay={activeCardId === card.id}
+              onDuplicate={onDuplicateCard}
               onLabelsUpdated={() => {
                 // Refetch cards to get updated labels
                 getCardsByList(id).then(result => {
@@ -836,6 +1196,13 @@ function Column({ id, title, cards, setCardsByList, onDeleteCard, onUpdateCard, 
             />
           ))}
         </SortableContext>
+
+        {/* Empty state indicator when dragging over empty list */}
+        {cards.length === 0 && isOver && isCardDragging && (
+          <div className="h-16 border-2 border-dashed border-blue-400 rounded-lg bg-blue-50/50 flex items-center justify-center">
+            <span className="text-sm text-blue-500">Déposer ici</span>
+          </div>
+        )}
       </div>
 
       <div className="mt-2 px-1">

@@ -7,6 +7,11 @@ import { createPortal } from 'react-dom';
 import ContextMenu from '@/app/components/ContextMenu';
 import { CardLabelPicker } from './CardLabelPicker';
 import { CardMemberAvatars } from './CardMemberAvatars';
+import { DueDateBadge } from './DueDateBadge';
+import { CoverPopup } from './CoverPopup';
+import { CardMembersPopup } from './CardMembersPopup';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 type Label = {
     id: string;
@@ -25,8 +30,14 @@ type Card = {
     listId: string;
     title: string;
     position: any;
+    coverId?: string | null;
+    coverUrl?: string;
+    coverColor?: string | null;
+    coverSize?: string;
     labels?: Label[];
     members?: User[];
+    dueDate?: string | null;
+    isDone?: boolean;
 };
 
 type DraggableCardProps = {
@@ -36,11 +47,12 @@ type DraggableCardProps = {
     onUpdate: (cardId: string, data: { title?: string }) => void;
     onClick?: () => void;
     isDragDisabled?: boolean;
+    isDragOverlay?: boolean;
     onLabelsUpdated?: () => void;
     onDuplicate?: (cardId: string) => void;
 };
 
-export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDragDisabled, onLabelsUpdated, onDuplicate }: DraggableCardProps) {
+export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDragDisabled, isDragOverlay, onLabelsUpdated, onDuplicate }: DraggableCardProps) {
     const {
         attributes,
         listeners,
@@ -55,21 +67,28 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
     const [showLabelPicker, setShowLabelPicker] = useState(false);
     const [editTitle, setEditTitle] = useState(card.title);
     const [editPos, setEditPos] = useState({ top: 0, left: 0, width: 0 });
-    const [showContextMenu, setShowContextMenu] = useState(false); 
-    const [contextPos, setContextPos] = useState({ x: 0, y: 0 }); 
+    const [showContextMenu, setShowContextMenu] = useState(false);
+    const [showCoverPopup, setShowCoverPopup] = useState(false);
+    const [showMembersPopup, setShowMembersPopup] = useState(false);
+    const [contextPos, setContextPos] = useState({ x: 0, y: 0 });
 
     const cardRef = useRef<HTMLElement | null>(null);
     const labelButtonRef = useRef<HTMLButtonElement | null>(null);
+    const membersButtonRef = useRef<HTMLButtonElement | null>(null);
+    const coverButtonRef = useRef<HTMLButtonElement | null>(null);
 
     // Reset title when card changes
     useEffect(() => {
         setEditTitle(card.title);
     }, [card.title]);
 
+    // When this card is being dragged (showing in DragOverlay), show placeholder
+    const showPlaceholder = isDragging || isDragOverlay;
+
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0.5 : 1,
+        opacity: showPlaceholder ? 0.4 : 1,
     };
 
     function handleSave() {
@@ -105,7 +124,8 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                 style={style}
                 {...attributes}
                 {...listeners}
-                className="bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative"
+                className={`bg-white p-2 rounded-lg shadow-sm border-b border-gray-200 hover:border-blue-500 cursor-pointer group relative focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${showPlaceholder ? 'border-2 border-dashed border-blue-400 bg-blue-50/30' : ''
+                    } ${isDragging ? 'shadow-lg ring-2 ring-blue-500' : ''}`}
                 onClick={onClick}
                 onContextMenu={(e) => {
                     e.preventDefault();
@@ -113,36 +133,97 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                     setContextPos({ x: e.clientX, y: e.clientY });
                     setShowContextMenu(true);
                 }}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onClick?.();
+                    }
+                }}
             >
-                {/* Labels - compact colored bars */}
-                {card.labels && card.labels.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                        {card.labels.map(label => (
+                {/* Cover - Image or Color */}
+                {(card.coverUrl || card.coverColor) && (
+                    <div className="-m-2 mb-2">
+                        {card.coverSize === 'full' ? (
+                            // Full cover - compact background with overlay text
                             <div
-                                key={label.id}
-                                className="h-2 w-10 rounded-sm"
-                                style={{ backgroundColor: label.color }}
-                                title={label.name}
+                                className="h-16 rounded-lg flex items-end p-2"
+                                style={{
+                                    backgroundColor: card.coverColor || undefined,
+                                    backgroundImage: card.coverUrl
+                                        ? `url(${card.coverUrl.startsWith('http') ? card.coverUrl : `${API_URL}/${card.coverUrl}`})`
+                                        : undefined,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                }}
+                            >
+                                <span className="text-sm font-semibold text-white drop-shadow-lg">
+                                    {card.title}
+                                </span>
+                            </div>
+                        ) : (
+                            // Normal cover - small header band only
+                            <div
+                                className="h-8 w-full rounded-t-lg"
+                                style={{
+                                    backgroundColor: card.coverColor || undefined,
+                                    backgroundImage: card.coverUrl
+                                        ? `url(${card.coverUrl.startsWith('http') ? card.coverUrl : `${API_URL}/${card.coverUrl}`})`
+                                        : undefined,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                }}
                             />
-                        ))}
+                        )}
                     </div>
                 )}
-                <span className="text-sm text-black block min-h-[1.5em] break-words">{card.title}</span>
 
-                {/* Member Avatars */}
-                {card.members && card.members.length > 0 && (
-                    <div className="mt-2">
-                        <CardMemberAvatars members={card.members} />
-                    </div>
+                {/* Content - only show if not full cover */}
+                {card.coverSize !== 'full' && (
+                    <>
+                        {/* Labels - compact colored bars */}
+                        {card.labels && card.labels.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                                {card.labels.map(label => (
+                                    <div
+                                        key={label.id}
+                                        className="h-2 w-10 rounded-sm"
+                                        style={{ backgroundColor: label.color }}
+                                        title={label.name}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        <span className="text-sm text-black block min-h-[1.5em] break-words">{card.title}</span>
+
+                        {/* Due Date Badge and Member Avatars Row */}
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                            {/* Due Date Badge */}
+                            {(card.dueDate || card.isDone) && (
+                                <DueDateBadge dueDate={card.dueDate} isDone={card.isDone} />
+                            )}
+
+                            {/* Member Avatars */}
+                            {card.members && card.members.length > 0 && (
+                                <div className="ml-auto">
+                                    <CardMemberAvatars members={card.members} />
+                                </div>
+                            )}
+                        </div>
+                    </>
                 )}
                 <button
-                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-black z-10"
+                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 focus:opacity-100 h-7 w-7 flex items-center justify-center hover:bg-gray-100 rounded-md text-black z-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={handleEditClick}
+                    aria-label="Modifier la carte"
                 >
-                    ✎
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" />
+                    </svg>
                 </button>
             </div>
+
 
             {showLabelPicker && (
                 <CardLabelPicker
@@ -150,8 +231,30 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                     boardId={boardId}
                     currentLabels={card.labels || []}
                     onClose={() => setShowLabelPicker(false)}
-                    onLabelsUpdated={onLabelsUpdated}
+                    onLabelsUpdated={onLabelsUpdated || (() => { })}
                     anchorEl={labelButtonRef.current}
+                />
+            )}
+
+            {showCoverPopup && (
+                <CoverPopup
+                    cardId={card.id}
+                    currentCoverId={card.coverUrl ? 'temp' : null}
+                    currentCoverColor={card.coverColor}
+                    anchorEl={coverButtonRef.current}
+                    onClose={() => setShowCoverPopup(false)}
+                    onCoverSet={onLabelsUpdated || (() => { })}
+                />
+            )}
+
+            {showMembersPopup && (
+                <CardMembersPopup
+                    cardId={card.id}
+                    boardId={boardId}
+                    currentMembers={card.members || []}
+                    onClose={() => setShowMembersPopup(false)}
+                    onMembersUpdated={onLabelsUpdated || (() => { })}
+                    anchorEl={membersButtonRef.current}
                 />
             )}
 
@@ -249,12 +352,33 @@ export function DraggableCard({ card, boardId, onDelete, onUpdate, onClick, isDr
                                         setShowLabelPicker(true);
                                     }}
                                 />
-                                <SidebarButton icon={<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />} label="Modifier les membres" />
-                                <SidebarButton icon={<path d="M4 4h16v10h-16zM4 2c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-10c0-1.1-.9-2-2-2h-16z" />} label="Modifier la couverture" />
-                                <SidebarButton icon={<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />} label="Modifier les dates" />
-                                <SidebarButton icon={<path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v3zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z" />} label="Déplacer" />
-                                <SidebarButton icon={<path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />} label="Copier la carte" />
-                                <SidebarButton icon={<path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" />} label="Copier le lien" />
+                                <SidebarButton
+                                    ref={membersButtonRef}
+                                    icon={<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />}
+                                    label="Modifier les membres"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMembersPopup(true);
+                                    }}
+                                />
+                                <SidebarButton
+                                    ref={coverButtonRef}
+                                    icon={<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM6 17l2.5-3.25 1.75 2.1L13 12l4.5 6H6z" />}
+                                    label="Modifier la couverture"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowCoverPopup(true);
+                                    }}
+                                />
+                                <SidebarButton
+                                    icon={<path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />}
+                                    label="Copier la carte"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDuplicate?.(card.id);
+                                        setIsEditing(false);
+                                    }}
+                                />
                                 <SidebarButton
                                     icon={<path d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12.12l.81 1H5.12z" />}
                                     label="Archiver"

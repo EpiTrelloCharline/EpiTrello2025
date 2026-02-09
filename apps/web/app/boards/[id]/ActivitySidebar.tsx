@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { api } from '@/lib/api';
+import { useWebSocket } from '@/app/context/WebSocketContext';
 
 type Activity = {
   id: string;
@@ -65,8 +66,9 @@ export function ActivitySidebar({ boardId, isOpen, onClose }: ActivitySidebarPro
   const [loading, setLoading] = useState(false);
   const activitiesEndRef = useRef<HTMLDivElement>(null);
   const previousCountRef = useRef(0);
+  const { socket } = useWebSocket();
 
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     if (!boardId) return;
 
     setLoading(true);
@@ -88,16 +90,34 @@ export function ActivitySidebar({ boardId, isOpen, onClose }: ActivitySidebarPro
     } finally {
       setLoading(false);
     }
-  };
+  }, [boardId]);
 
   useEffect(() => {
     if (isOpen) {
       fetchActivities();
-      // Poll for new activities every 10 seconds
-      const interval = setInterval(fetchActivities, 10000);
-      return () => clearInterval(interval);
     }
-  }, [isOpen, boardId]);
+  }, [isOpen, fetchActivities]);
+
+  // Listen for real-time activity updates via WebSocket
+  useEffect(() => {
+    if (!socket || !isOpen) return;
+
+    const handleActivityCreated = (data: { activity: Activity }) => {
+      console.log('Activity created event:', data);
+      setActivities(prev => [data.activity, ...prev]);
+      
+      // Auto-scroll to new activity
+      setTimeout(() => {
+        activitiesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    };
+
+    socket.on('activityCreated', handleActivityCreated);
+
+    return () => {
+      socket.off('activityCreated', handleActivityCreated);
+    };
+  }, [socket, isOpen]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

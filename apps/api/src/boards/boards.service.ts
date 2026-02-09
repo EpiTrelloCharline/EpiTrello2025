@@ -1,12 +1,21 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { PrismaService } from '../prisma.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { UpdateBoardDto } from './dto/update-board.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+import { ActivityType, NotificationType } from '@prisma/client';
+import { ActivityEvent, ActivityEvents } from '../activities/activities.events';
 
 @Injectable()
 export class BoardsService {
-  constructor(private prisma: PrismaService) { }
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+    private eventEmitter: EventEmitter2,
+  ) { }
 
   async listInWorkspace(userId: string, workspaceId: string) {
     const isMember = await this.prisma.workspaceMember.findFirst({ where: { workspaceId, userId } });
@@ -174,6 +183,36 @@ export class BoardsService {
       },
     });
 
+    // Notify the invited user
+    await this.notificationsService.createNotification({
+      type: NotificationType.MEMBER_ADDED,
+      message: `Vous avez été ajouté au tableau "${board.title}"`,
+      userId: invitedUser.id,
+      boardId: board.id,
+      entityId: newMember.id,
+    });
+
+    // Notify other board members
+    await this.notificationsService.notifyBoardMembers(
+      board.id,
+      [userId, invitedUser.id], // Exclude actor AND invited user (who already got a specific notification)
+      NotificationType.MEMBER_ADDED,
+      `${invitedUser.name || invitedUser.email} a rejoint le tableau "${board.title}"`,
+      newMember.id,
+    );
+
+    // Log Activity
+    this.eventEmitter.emit(
+      ActivityEvents.MEMBER_ADDED,
+      new ActivityEvent(
+        board.id,
+        userId,
+        ActivityType.MEMBER_ADD,
+        newMember.id,
+        `${invitedUser.name || invitedUser.email} a été ajouté au tableau`
+      )
+    );
+
     // Return the formatted information for the UI
     return {
       id: newMember.id,
@@ -183,6 +222,77 @@ export class BoardsService {
       role: newMember.role,
       avatar: null,
     };
+  }
+
+  /**
+   * Update board appearance (background color or image)
+   * Only ADMIN and OWNER can update board settings
+   */
+  async updateBoard(userId: string, boardId: string, dto: UpdateBoardDto) {
+    // Verify that the user is a board member with sufficient permissions
+    const member = await this.prisma.boardMember.findFirst({
+      where: { boardId, userId },
+    });
+
+    if (!member) {
+      throw new ForbiddenException('Vous n\'êtes pas membre de ce board');
+    }
+
+    if (member.role !== 'OWNER' && member.role !== 'ADMIN') {
+      throw new ForbiddenException('Seuls les propriétaires et administrateurs peuvent modifier les paramètres du board');
+    }
+
+    // Build update data dynamically
+    const updateData: { title?: string; backgroundColor?: string; backgroundImage?: string } = {};
+
+    if (dto.title !== undefined) {
+      updateData.title = dto.title;
+    }
+    if (dto.backgroundColor !== undefined) {
+      updateData.backgroundColor = dto.backgroundColor;
+    }
+    if (dto.backgroundImage !== undefined) {
+      updateData.backgroundImage = dto.backgroundImage;
+    }
+
+    // Update the board
+    return this.prisma.board.update({
+      where: { id: boardId },
+      data: updateData,
+      include: {
+        members: { include: { user: true } },
+        labels: true,
+      },
+    });
+  }
+
+  /**
+   * Remove a member from a board
+   */
+  async removeMember(userId: string, boardId: string, memberUserId: string) {
+    const board = await this.prisma.board.findUnique({ where: { id: boardId } });
+    if (!board) throw new NotFoundException('Board not found');
+
+    const member = await this.prisma.boardMember.findFirst({
+      where: { boardId, userId: memberUserId },
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    await this.prisma.boardMember.delete({ where: { id: member.id } });
+
+    // Log Activity
+    this.eventEmitter.emit(
+      ActivityEvents.MEMBER_REMOVED,
+      new ActivityEvent(
+        boardId,
+        userId,
+        ActivityType.MEMBER_REMOVE,
+        memberUserId,
+        `Membre retiré du tableau`
+      )
+    );
+
+    return { success: true };
   }
 }
 

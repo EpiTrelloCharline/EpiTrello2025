@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma.service';
 
 @Module({
   controllers: [WorkspacesController],
-  providers: [WorkspacesService, PrismaService],
+  providers: [WorkspacesService],
 })
-export class WorkspacesModule {}
+export class WorkspacesModule { }
 

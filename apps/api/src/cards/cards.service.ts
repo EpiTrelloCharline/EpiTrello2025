@@ -3,18 +3,26 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PrismaService } from "../prisma.service";
 import { CreateCardDto } from "./dto/create-card.dto";
 import { MoveCardDto } from "./dto/move-card.dto";
 import { UpdateCardDto } from "./dto/update-card.dto";
+import { BatchMoveCardsDto } from "./dto/batch-move-cards.dto";
 import { ActivitiesService } from "../activities/activities.service";
-import { ActivityType } from "@prisma/client";
+import { ActivityEvent, ActivityEvents } from "../activities/activities.events";
+import { ActivityType, NotificationType } from "@prisma/client";
+import { NotificationsService } from "../notifications/notifications.service";
+import { WebSocketsGateway } from "../websockets/websockets.gateway";
 
 @Injectable()
 export class CardsService {
   constructor(
     private prisma: PrismaService,
     private activitiesService: ActivitiesService,
+    private notificationsService: NotificationsService,
+    private webSocketsGateway: WebSocketsGateway,
+    private eventEmitter: EventEmitter2,
   ) { }
 
   private async assertBoardMember(userId: string, listId: string) {
@@ -103,13 +111,35 @@ export class CardsService {
       },
     });
 
-    await this.activitiesService.logActivity(
-      list.boardId,
-      userId,
-      ActivityType.CREATE_CARD,
-      card.id,
-      `Carte "${card.title}" créée dans la liste "${list.title}"`
+    this.eventEmitter.emit(
+      ActivityEvents.CARD_CREATED,
+      new ActivityEvent(
+        list.boardId,
+        userId,
+        ActivityType.CREATE_CARD,
+        card.id,
+        `Carte "${card.title}" créée dans la liste "${list.title}"`
+      )
     );
+
+    // Notify board members
+    await this.notificationsService.notifyBoardMembers(
+      list.boardId,
+      [userId],
+      NotificationType.CARD_CREATED,
+      `Nouvelle carte "${card.title}" créée dans "${list.title}"`,
+      card.id,
+    );
+
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardCreated(list.boardId, {
+      cardId: card.id,
+      card,
+      listId: list.id,
+      boardId: list.boardId,
+      userId,
+      timestamp: new Date(),
+    });
 
     return card;
   }
@@ -166,14 +196,37 @@ export class CardsService {
     });
 
     if (isMovingToList) {
-      await this.activitiesService.logActivity(
+      this.eventEmitter.emit(
+        ActivityEvents.CARD_MOVED,
+        new ActivityEvent(
+          sourceList.boardId,
+          userId,
+          ActivityType.MOVE_CARD,
+          updatedCard.id,
+          `Carte "${updatedCard.title}" déplacée de "${sourceList.title}" vers "${targetList.title}"`
+        )
+      );
+
+      // Notify board members
+      await this.notificationsService.notifyBoardMembers(
         sourceList.boardId,
-        userId,
-        ActivityType.MOVE_CARD,
+        [userId],
+        NotificationType.CARD_MOVED,
+        `Carte "${updatedCard.title}" déplacée vers "${targetList.title}"`,
         updatedCard.id,
-        `Carte "${updatedCard.title}" déplacée de "${sourceList.title}" vers "${targetList.title}"`
       );
     }
+
+    // Emit WebSocket event - card_move
+    this.webSocketsGateway.emitCardMove(sourceList.boardId, {
+      cardId: updatedCard.id,
+      sourceListId: sourceList.id,
+      targetListId: targetListId,
+      newPosition: newPosition,
+      card: updatedCard,
+      userId,
+      timestamp: new Date(),
+    });
 
     return updatedCard;
   }
@@ -194,6 +247,9 @@ export class CardsService {
         listId: dto.listId,
         position: dto.position ? Number(dto.position) : undefined,
         isArchived: dto.isArchived,
+        coverColor: dto.coverColor,
+        coverUrl: dto.coverUrl,
+        coverSize: dto.coverSize,
       },
       include: {
         labels: {
@@ -206,14 +262,35 @@ export class CardsService {
     });
 
     if (dto.description !== undefined && dto.description !== card.description) {
-      await this.activitiesService.logActivity(
+      this.eventEmitter.emit(
+        ActivityEvents.UPDATE_DESCRIPTION,
+        new ActivityEvent(
+          card.list.boardId,
+          userId,
+          ActivityType.UPDATE_DESCRIPTION,
+          card.id,
+          `Description modifiée pour la carte "${card.title}"`
+        )
+      );
+
+      // Notify board members
+      await this.notificationsService.notifyBoardMembers(
         card.list.boardId,
-        userId,
-        ActivityType.UPDATE_DESCRIPTION,
+        [userId],
+        NotificationType.CARD_UPDATED,
+        `Carte "${card.title}" mise à jour`,
         card.id,
-        `Description modifiée pour la carte "${card.title}"`
       );
     }
+
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardUpdated(card.list.boardId, {
+      cardId: card.id,
+      card: updatedCard,
+      boardId: card.list.boardId,
+      userId,
+      timestamp: new Date(),
+    });
 
     return updatedCard;
   }
@@ -236,15 +313,78 @@ export class CardsService {
       },
     });
 
-    await this.activitiesService.logActivity(
-      card.list.boardId,
-      userId,
-      ActivityType.DELETE_CARD,
-      card.id,
-      `Carte "${card.title}" archivée`
+    this.eventEmitter.emit(
+      ActivityEvents.CARD_ARCHIVED,
+      new ActivityEvent(
+        card.list.boardId,
+        userId,
+        ActivityType.CARD_ARCHIVE,
+        card.id,
+        `Carte "${card.title}" archivée`
+      )
     );
 
+    // Notify board members
+    await this.notificationsService.notifyBoardMembers(
+      card.list.boardId,
+      [userId],
+      NotificationType.CARD_DELETED,
+      `Carte "${card.title}" archivée`,
+      card.id,
+    );
+
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardDeleted(card.list.boardId, {
+      cardId: card.id,
+      listId: card.listId,
+      boardId: card.list.boardId,
+      userId,
+      timestamp: new Date(),
+    });
+
     return updatedCard;
+  }
+
+  async listArchived(userId: string, boardId: string) {
+    // Check if user is board member
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+      include: { members: true },
+    });
+    if (!board) throw new NotFoundException("Board not found");
+
+    const isMember = board.members.some((m) => m.userId === userId);
+    if (!isMember && board.createdById !== userId) {
+      throw new ForbiddenException("Not a board member");
+    }
+
+    return this.prisma.card.findMany({
+      where: {
+        list: { boardId },
+        isArchived: true,
+      },
+      include: {
+        list: true,
+        labels: { include: { label: true } },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+
+  async deletePermanent(userId: string, cardId: string) {
+    const card = await this.assertCardAccess(userId, cardId);
+
+    await this.prisma.card.delete({ where: { id: cardId } });
+
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardDeleted(card.list.boardId, {
+      cardId: card.id,
+      listId: card.listId,
+      boardId: card.list.boardId,
+      timestamp: new Date(),
+    });
+
+    return { success: true };
   }
 
   /**
@@ -317,6 +457,226 @@ export class CardsService {
       `Carte "${created.title}" dupliquée dans la liste "${card.list.title}"`
     );
 
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardCreated(card.list.boardId, {
+      cardId: created.id,
+      card: created,
+      listId: card.listId,
+      boardId: card.list.boardId,
+      userId,
+      timestamp: new Date(),
+    });
+
     return created;
+  }
+
+  /**
+   * Batch update card positions - optimized for drag & drop operations
+   * Updates multiple card positions in a single transaction
+   */
+  async batchMove(userId: string, dto: BatchMoveCardsDto) {
+    if (!dto.cards || dto.cards.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+
+    // Verify user has access to all affected cards
+    const cardIds = dto.cards.map(c => c.cardId);
+    const cards = await this.prisma.card.findMany({
+      where: { id: { in: cardIds } },
+      include: {
+        list: {
+          include: {
+            board: { include: { members: true } }
+          }
+        }
+      }
+    });
+
+    if (cards.length !== cardIds.length) {
+      throw new NotFoundException("One or more cards not found");
+    }
+
+    // Check permissions for all cards
+    const boardIds = new Set<string>();
+    for (const card of cards) {
+      const isMember = card.list.board.members.some(m => m.userId === userId);
+      if (!isMember && card.list.board.createdById !== userId) {
+        throw new ForbiddenException("Not authorized to move one or more cards");
+      }
+      boardIds.add(card.list.boardId);
+    }
+
+    // Verify all target lists exist and user has access
+    const targetListIds = [...new Set(dto.cards.map(c => c.listId))];
+    const targetLists = await this.prisma.list.findMany({
+      where: { id: { in: targetListIds } },
+      include: { board: { include: { members: true } } }
+    });
+
+    if (targetLists.length !== targetListIds.length) {
+      throw new NotFoundException("One or more target lists not found");
+    }
+
+    for (const list of targetLists) {
+      const isMember = list.board.members.some(m => m.userId === userId);
+      if (!isMember && list.board.createdById !== userId) {
+        throw new ForbiddenException("Not authorized to move cards to one or more lists");
+      }
+      boardIds.add(list.boardId);
+    }
+
+    // Perform batch update in a transaction
+    const updates = dto.cards.map(cardUpdate =>
+      this.prisma.card.update({
+        where: { id: cardUpdate.cardId },
+        data: {
+          listId: cardUpdate.listId,
+          position: cardUpdate.position
+        }
+      })
+    );
+
+    await this.prisma.$transaction(updates);
+
+    // Emit WebSocket events for each affected board
+    for (const boardId of boardIds) {
+      this.webSocketsGateway.emitBoardUpdated(boardId, {
+        boardId,
+        board: { type: 'batch-cards-moved', cards: dto.cards },
+        timestamp: new Date(),
+      });
+    }
+
+    return { success: true, updatedCount: dto.cards.length };
+  }
+
+  /**
+   * Add a member to a card
+   */
+  async addMember(userId: string, cardId: string, memberUserId: string) {
+    const card = await this.assertCardAccess(userId, cardId);
+
+    // Check if the member is actually a board member
+    const isBoardMember = card.list.board.members.some(
+      (m) => m.userId === memberUserId
+    );
+    if (!isBoardMember && card.list.board.createdById !== memberUserId) {
+      throw new ForbiddenException("User is not a board member");
+    }
+
+    // Check if already assigned
+    const existingMember = await this.prisma.card.findFirst({
+      where: {
+        id: cardId,
+        members: { some: { id: memberUserId } },
+      },
+    });
+
+    if (existingMember) {
+      return { message: "User already assigned to card" };
+    }
+
+    // Add member to card
+    const updatedCard = await this.prisma.card.update({
+      where: { id: cardId },
+      data: {
+        members: {
+          connect: { id: memberUserId },
+        },
+      },
+      include: {
+        labels: { include: { label: true } },
+        members: true,
+      },
+    });
+
+    // Notify the assigned user
+    await this.notificationsService.notifyAssignment(
+      memberUserId,
+      userId,
+      cardId,
+      card.title,
+      card.list.boardId,
+    );
+
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardUpdated(card.list.boardId, {
+      cardId: updatedCard.id,
+      card: updatedCard,
+      boardId: card.list.boardId,
+    });
+
+    return updatedCard;
+  }
+
+  /**
+   * Remove a member from a card
+   */
+  async removeMember(userId: string, cardId: string, memberUserId: string) {
+    const card = await this.assertCardAccess(userId, cardId);
+
+    // Remove member from card
+    const updatedCard = await this.prisma.card.update({
+      where: { id: cardId },
+      data: {
+        members: {
+          disconnect: { id: memberUserId },
+        },
+      },
+      include: {
+        labels: { include: { label: true } },
+        members: true,
+      },
+    });
+
+    // Notify the removed user (if not removing themselves)
+    if (memberUserId !== userId) {
+      const removedBy = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true },
+      });
+
+      const removerName = removedBy?.name || removedBy?.email || 'Someone';
+
+      await this.notificationsService.createNotification({
+        type: NotificationType.MEMBER_REMOVED,
+        message: `${removerName} removed you from card "${card.title}"`,
+        userId: memberUserId,
+        boardId: card.list.boardId,
+        entityId: cardId,
+      });
+    }
+
+    // Emit WebSocket event
+    this.webSocketsGateway.emitCardUpdated(card.list.boardId, {
+      cardId: updatedCard.id,
+      card: updatedCard,
+      boardId: card.list.boardId,
+    });
+
+    return updatedCard;
+  }
+
+  /**
+   * Get card members
+   */
+  async getMembers(userId: string, cardId: string) {
+    const card = await this.assertCardAccess(userId, cardId);
+
+    const cardWithMembers = await this.prisma.card.findUnique({
+      where: { id: cardId },
+      include: {
+        members: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    return cardWithMembers?.members || [];
   }
 }
